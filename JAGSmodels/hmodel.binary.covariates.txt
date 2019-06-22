@@ -1,0 +1,29 @@
+model
+{
+    # likelihood
+    for(i in 1:n){
+    y[i] ~ dbern(q[i])
+    logit(q[i]) <- beta0 + inprod(G[i,],beta1[]) + inprod(W[i,],beta2) 
+    }
+    
+    # priors
+    for(h in 1:nG){
+    Ebeta[h] <- inprod(Z[h,],pi[])
+    beta1[h] ~ dnorm(Ebeta[h],prec.beta)
+    }
+    
+    for(s in 1:nZ){
+    pi[s] ~ dnorm(0,prec.pi)
+    }
+    
+    for(w in 1:nW){
+      beta2[w] ~ dnorm(0,0.001)
+    }
+    
+    
+    # hyperpriors
+    beta0 ~ dnorm(0,0.001) #aquests valors qu?eee
+    
+    prec.pi ~ dgamma(10,1)
+    prec.beta ~ dgamma(1,1)
+    }

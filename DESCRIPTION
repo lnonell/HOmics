@@ -1,0 +1,21 @@
+Package: HOmics
+Title: Hierarchical omics
+Version: 0.0.0.9000
+Authors@R: c(person("Lara", "Nonell", email = "lnonell@imim.cat", role = c("aut", "cre")),
+  person("Juan R.", "Gonzalez", ,"juanr.gonzalez@isglobal.org", role = "aut"))
+Description: hierachical omic association.
+Depends: R (>= 3.5)
+License: MIT + file LICENSE
+Encoding: UTF-8
+LazyData: true
+RoxygenNote: 6.1.1
+Imports:
+    Biobase,
+    minfi,
+    tidyverse,
+    rjags,
+    doParallel,
+    foreach
+Collate: 
+    'hmodel.R',
+    'integrate.R'
