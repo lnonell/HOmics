@@ -20,21 +20,26 @@ integrate is the main function in the plackage. It needs several parameters:
 - meth.data=GRSet
 - pheno.cond.col="tissue.ch1"
 - annot.gene.col="UCSC_RefGene_Name"
-- annot.z.cols=c("UCSC_RefGene_Group")
+- annot.z.col="UCSC_RefGene_Group"
 - annot.mult.sep=NULL
-- zvars=NULL
+- z.matrix=NULL
 - gene.list=genes.u
 - cores=1
  
-## Analyzing a Methyation GenomicRatioSet
+The package is prepared to analyze GenomicRatioSet (minfi) but also ExpressionSet (BioC), a standard class when downloading data using the GEOquery package.
+In both cases it uses annotations 
 
-The package is prepared to analyze GenomicRatioSet (minfi) of methylated data in its default parameters related to relative position of CpGs in a gene.
+parameters related to relative position of CpGs in a gene.
 
 - 3'UTR
 - TSS1500
 - TSS200
 - Body
 - 5'UTR
+ 
+## Analyzing a Methylation GenomicRatioSet
+
+The package is prepared to analyze GenomicRatioSet (minfi) of methylated data in its default 
 
 In this case default values are 
 
@@ -89,3 +94,7 @@ levels(a.f)
 When response variable is continuous, a hierarchical linear model will be performed.
 
 Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+
+# Annotations
+
+GEO data from Illumina methylation array 27k (GPL...) and 450K (GPL...) contain two fields UCSC_RefGene_Name and UCSC_RefGene_Group but EPIC (GPL21145) does not contain such information. Annotation files
