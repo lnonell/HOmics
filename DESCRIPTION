@@ -5,18 +5,20 @@ Authors@R: c(person("Lara", "Nonell", email = "lnonell@imim.cat", role = c("aut"
   person("Juan R.", "Gonzalez", ,"juanr.gonzalez@isglobal.org", role = "aut"))
 Description: hierachical omic association.
 Depends: R (>= 3.5)
+SystemRequirements: JAGS 4.x.y
 License: MIT + file LICENSE
 Encoding: UTF-8
 LazyData: true
 RoxygenNote: 6.1.1.9000
 Imports:
     Biobase,
-    minfi,
-    tidyverse,
-    rjags,
+    MCMCvis,
     doParallel,
-    foreach
+    foreach,
+    minfi,
+    rjags,
+    tidyverse
 Collate: 
-    'hmodel.R',
-    'integrate.R',
+    'hmodel.R'
+    'integrate.R'
     'getsignif.R'

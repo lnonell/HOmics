@@ -44,7 +44,7 @@ The package is prepared to analyze GenomicRatioSet (minfi) of methylated data in
 In this case default values are 
 
 - annot.gene.col="UCSC_RefGene_Name"
-- annot.z.cols=c("UCSC_RefGene_Group")
+- annot.z.cols="UCSC_RefGene_Group"
 - annot.mult.sep=";"
 - cores=1
 

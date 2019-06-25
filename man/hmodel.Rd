@@ -4,17 +4,19 @@
 \alias{hmodel}
 \title{Performs rjags models}
 \usage{
-hmodel(g.matrix, z.matrix, cond.v)
+hmodel(g.matrix, z.matrix, cond, cont)
 }
 \arguments{
 \item{g.matrix}{matrix of cpgs, with samples in rows and cpgs in columns}
 
 \item{z.matrix}{matrix of functional annotations for g.matrix cpgs, with cpgs in rows and functions in columns}
 
-\item{cond.v}{response variable, as vector}
+\item{cond}{response variable, as numerical vector}
+
+\item{cont}{flag to consider a continuous response}
 }
 \value{
-hmodel
+results for a gene model
 }
 \description{
 Performs rjags models

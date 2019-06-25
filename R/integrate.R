@@ -10,13 +10,14 @@
 #' @param gene.list genes to analyze as a vector with symbols (HUGO)
 #' @param cores cores in case of parallelization. Default=1
 
-#' @return integrate
-
 #' @import tidyverse
-#' @import MultiDataSet
+#' @import Biobase
 #' @import minfi
+#' @import doParallel
+#' @import foreach
 #' 
-#' @return 
+#' @return integrate
+#'  
 #' @examples to be built
 
 #' @export integrate

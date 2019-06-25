@@ -6,17 +6,26 @@
 \usage{
 integrate(meth.data = GRSet, pheno.cond.col = "tissue.ch1",
   annot.gene.col = "UCSC_RefGene_Name",
-  annot.z.cols = c("UCSC_RefGene_Group"), annot.mult.sep = NULL,
-  zvars = NULL, gene.list = genes.u, cores = 1, ...)
+  annot.z.col = c("UCSC_RefGene_Group"), annot.mult.sep = NULL,
+  z.matrix = NULL, gene.list = genes.u, pheno.covar.col = NULL,
+  cores = 1, ...)
 }
 \arguments{
 \item{meth.data}{GenomicRatioSet o multidataset o expressionset}
 
-\item{pheno.cond.col}{response variable, one of the variable names contained in pData of meth.data}
+\item{pheno.cond.col}{response variable, column of annotation that contains condition (one of the variable names contained in pData of meth.data)}
 
-\item{annot.z.cols}{prior information. vector of variable names contained in featureData (for GenomicRatioSet functions getAnnotation(brge_methy) or granges(brge_methy) could be used).}
+\item{annot.gene.col}{column of annotation that contains gene names (same annotations as gene.list)}
 
-\item{zvars}{prior information. Alternative parameter to annot.z.cols as matrix with rows the featureNames of meth.data and columns the Zvars can be given. Default=NULL}
+\item{annot.z.col}{prior information. column of annotation that contains prior variable (for GenomicRatioSet functions getAnnotation(brge_methy) or granges(brge_methy) could be used).}
+
+\item{annot.mult.sep}{separartor in case annot.gene.col and maybe annot.z.col contain multiple values such as in methylation data. Default=NULL}
+
+\item{z.matrix}{prior information. Alternative parameter to annot.z.col as matrix with rows the featureNames of meth.data and columns the Zvars can be given. Default=NULL}
+
+\item{gene.list}{genes to analyze as a vector with symbols (HUGO)}
+
+\item{pheno.covar.col}{covariates, column of annotation that contains names of covariates to include in the model (one or more of the variable names contained in pData of meth.data)}
 
 \item{cores}{cores in case of parallelization. Default=1}
 }

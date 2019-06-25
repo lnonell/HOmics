@@ -5,8 +5,10 @@
 #' @param cond response variable, as numerical vector
 #' @param cont flag to consider a continuous response
 
+#' @import rjags
 #' @import MCMCvis
-#' @return hmodel
+#' 
+#' @return results for a gene model
 
 #' @examples to be built
 
