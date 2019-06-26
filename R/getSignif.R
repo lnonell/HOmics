@@ -11,16 +11,18 @@
 
 getsignif <- function (res, param = "p.pos", threshold = 0.05, as.data.frame = T)
 {
+  if (class(res)!="HOmics") stop("res must be an HOmics class object")
   
   if (!param %in% c("p.pos","p.neg"))
     stop("param has to be one of the following parameters: p.pos or p.neg")
   
   if (!(is.null(threshold))) {
-   # res.f <- sapply(res, function(x) {x[x[,param]<threshold,]})
+  
     res.f <- map(res, function(x) filter(x,!!as.name(param)<threshold))
     res.f <- keep(res.f,function(x) nrow(x)>0)
     if (as.data.frame)  res.f <- bind_rows(res.f,.id="gene")
     return(res.f)
+    
   } 
 }
 

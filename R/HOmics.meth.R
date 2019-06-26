@@ -13,17 +13,17 @@
 #' @import tidyverse
 #' @import Biobase
 #' @import minfi
-#' @import doParallel
+#' @import parallel
 #' @import foreach
 #' 
-#' @return integrate
+#' @return an object of class HOmics
 #'  
 #' @examples to be built
 
-#' @export integrate
+#' @export HOmics.meth
 
 
-integrate <- function(meth.data=GRSet,pheno.cond.col="tissue.ch1",annot.gene.col="UCSC_RefGene_Name",
+HOmics.meth <- function(meth.data=GRSet,pheno.cond.col="tissue.ch1",annot.gene.col="UCSC_RefGene_Name",
                       annot.z.col=c("UCSC_RefGene_Group"),annot.mult.sep=NULL,z.matrix=NULL,gene.list=genes.u,
                       pheno.covar.col=NULL,cores=1,
                       ...)
@@ -99,7 +99,7 @@ integrate <- function(meth.data=GRSet,pheno.cond.col="tissue.ch1",annot.gene.col
       cond <- as.numeric(cond.v) %% 2
       print(cond)
     } else {
-      cat(paste0(pheno.cond.col," is a factor and has been converted to a numerical vector of 0s and 1s\n" ))
+      cat(paste0(pheno.cond.col," cond is a factor, it has been converted to a numerical vector of 0s and 1s to fit a hierarchical logistic model\n" ))
       cond <- as.numeric(cond.v) %% 2
       print(cond)
     }
@@ -208,7 +208,8 @@ stopCluster(cl)
 names(cpg.models) <- gene.list[1:N]
 
 results<-cpg.models
-results$call <- call
+#results$call <- call
+class(results) <- "HOmics"
 return(results)  
 }
 # ===============================================================================

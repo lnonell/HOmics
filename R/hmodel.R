@@ -22,8 +22,7 @@ hmodel <- function(g.matrix,z.matrix,cond,cont){
     ### Z matrix
     Z <- z.matrix
      
-    
-    ### phenotype (condition)
+      ### phenotype (condition)
     y <-cond
 
     N = nrow(G)
@@ -31,32 +30,31 @@ hmodel <- function(g.matrix,z.matrix,cond,cont){
     nZ = ncol(Z)
     dat <- list("n" = N, "y" = y,  "G" = G, "Z" = Z, "nG" = nG,"nZ" = nZ)
     
+    # #depending on variable y, and if it has covariates, model should change
     jags.file <- ifelse(cont,
                         system.file("JAGSmodels", "hmodel.cont.txt", package="HOmics"),
                         system.file("JAGSmodels", "hmodel.binary.txt", package="HOmics"))
-    # #depending on variable y, and if it has covariates, model should change
     # jags.file <- ifelse(cont,"D:/Doctorat/Hierarchical/Package/HOmics/JAGSmodels/hmodel.cont.txt",
     #                     "D:/Doctorat/Hierarchical/Package/HOmics/JAGSmodels/hmodel.binary.txt")
     
-    jags.m <- jags.model( file = jags.file, data=dat, n.chains=3,  
-                          n.adapt=1000 ) 
+    jags.m <- jags.model( file = jags.file, data = dat, n.chains = 3, n.adapt = 1000 ) 
    
     # burn-in
     update(jags.m, n.iter = 2000) 
     
     # estimate
-    samps <-coda.samples(jags.m, variable.names = c("beta"),n.iter=1000, thin=1) #thin has no effect on time
+    samps <-coda.samples(jags.m, variable.names = c("beta"), n.iter = 1000, thin = 1) 
 
     # pvals
     sampmat<-as.matrix(samps)
     
-    p.pos <- apply(sampmat, 2, function(x) round(mean(x > 0),4)) # Get p(beta > 0)
-    p.neg <- apply(sampmat, 2, function(x) round(mean(x < 0),4)) # Get p(beta < 0)
+    p.pos <- apply(sampmat, 2, function(x) round(mean(x > 0), 4)) 
+    p.neg <- apply(sampmat, 2, function(x) round(mean(x < 0), 4))
     
-    summ <- MCMCsummary(samps, Rhat=TRUE, n.eff=TRUE, round = 2)
-   # summ <-paste(rownames(Z),rownames(summ),sep="-")
-    summ <- as_tibble(cbind(summ,p.pos,p.neg))
-    summ <- summ %>% mutate(cpg=rownames(Z)) %>% select(cpg,mean:p.neg)
+    summ <- MCMCsummary(samps, Rhat = TRUE, n.eff = TRUE, round = 2)
+ 
+    summ <- as_tibble(cbind(summ, p.pos, p.neg))
+    summ <- summ %>% mutate(cpg = rownames(Z)) %>% select(cpg, mean:p.neg)
     
     return(summ)
 }

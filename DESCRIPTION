@@ -13,12 +13,13 @@ RoxygenNote: 6.1.1.9000
 Imports:
     Biobase,
     MCMCvis,
-    doParallel,
+    parallel,
     foreach,
     minfi,
     rjags,
     tidyverse
 Collate: 
     'hmodel.R'
-    'integrate.R'
+    'HOmics.R'
+    'HOmics.meth.R'
     'getsignif.R'
