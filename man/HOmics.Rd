@@ -9,7 +9,7 @@ HOmics(data.matrix, agg.matrix, cond, z.matrix, cores = 1, ...)
 \arguments{
 \item{data.matrix}{matrix with rownames the features and columns the samples}
 
-\item{agg.matrix}{matrix with colnames the features and columns the aggregation criteria, 0 for non pertenance}
+\item{agg.matrix}{matrix with colnames the features and rows the groups according to some feature aggregation criteria, 0 for non pertenance}
 
 \item{cond}{response variable, usually a numerical factor with two levels representing the conditions to compare. If cond is a numerical vector (continuous response), a hiearchical linear regression model will be fit instead of the default hierarchical logistic regression model}
 

@@ -54,7 +54,7 @@ hmodel <- function(g.matrix,z.matrix,cond,cont){
     summ <- MCMCsummary(samps, Rhat = TRUE, n.eff = TRUE, round = 2)
  
     summ <- as_tibble(cbind(summ, p.pos, p.neg))
-    summ <- summ %>% mutate(cpg = rownames(Z)) %>% select(cpg, mean:p.neg)
+    summ <- summ %>% mutate(feature = rownames(Z)) %>% select(feature, mean:p.neg)
     
     return(summ)
 }

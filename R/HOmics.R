@@ -1,12 +1,14 @@
 #' Integrates transcritpomics and methylation
 #'
 #' @param data.matrix matrix with rownames the features and columns the samples
-#' @param agg.matrix matrix with colnames the features and columns the aggregation criteria, 0 for non pertenance
+#' @param agg.matrix matrix with colnames the features and rows the groups according to some feature aggregation criteria, 0 for non pertenance
 #' @param cond response variable, usually a numerical factor with two levels representing the conditions to compare. If cond is a numerical vector (continuous response), a hiearchical linear regression model will be fit instead of the default hierarchical logistic regression model
 #' @param z.matrix column of annotation that contains gene names (same annotations as gene.list) 
 #' @param cores cores in case of parallelization. Default=1
 
+#' @import dplyr
 #' @import parallel
+#' @import doParallel
 #' @import foreach
 #' 
 #' @return an object of class HOmics

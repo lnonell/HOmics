@@ -8,39 +8,45 @@ output:
     toc_float: yes
 ---
 
-```{r setup, include=FALSE}
+```{r setup0, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
-
 ```
 
 # Introduction
 
-HOmics is a package to integrate omics data by capturing hierarchical omics relations in their association to phenotype. 
+HOmics is a package to integrate omics data by capturing hierarchical relations between omics in their association to phenotype. 
 It contains two main functions, the generic HOmics function and HOmics.meth, to analyze specifically methylation of genes affecting to a phenotype. Details on how to precisely apply this latter function are available in the *HOmics gene methylation integration* vignette.
 
 # Installation
 
-HOmics needs the JAGS environment. JAGS (Just Another Gibbs Sampler), is a program for analysis of Bayesian hierarchical models using Markov Chain Monte Carlo (MCMC) simulation.
+HOmics needs the JAGS environment. JAGS (Just Another Gibbs Sampler), is a program for the analysis of Bayesian hierarchical models using Markov Chain Monte Carlo (MCMC) simulation.
 You install JAGS easily through this link: [http://mcmc-jags.sourceforge.net/](http://mcmc-jags.sourceforge.net/)
+Once JAGS is installed you only need to install the package:
+
+```{r setup, include=FALSE}
+# library(devtools)
+# install_github("lnonell/HOmics")
+library(HOmics)
+```
+
+HOmics depends on the following R packages:
+
 
 # Data
 
-Input data for main function HOmics are the following:
+Input data parameters for main function HOmics are the following:
 
 - data.matrix: matrix with rownames the features and columns the samples.
 - agg.matrix: matrix with colnames the features and columns the aggregation criteria, 0 for non pertenance.
 - cond: response variable, usually a numerical factor with two levels representing the conditions to compare. If cond is a numerical vector (continuous response), a hiearchical linear regression model will be fit instead of the default hierarchical logistic regression model.
 - z.matrix column of annotation that contains gene names (same annotations as gene.list). 
-- cores: cores in case of parallelization. Default=1.
+- cores: cores in case of parallelization. Default = 1.
 
-## Other
 
 ## Response variable, phenotype or condition
 
-pheno.cond.col should be a variable  in the annotation data  associated to meth.data
-usually a column in pData(meth.data)
-
-Response variable can be continuous or categorical. 
+cond should be a vector of the same number of samples studied in data.matrix, as columns (in the same order!)
+Response variable can be continuous or categorical but depending on its nature it will be transformed and either a hierarchical logistic regression model or a hierarchical linear regression model will be fitted.
 
 ### Categorigal responses
 
@@ -76,8 +82,76 @@ levels(a.f)
 
 When response variable is continuous, a hierarchical linear model will be performed.
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+# Example with synthetic data
 
-# Annotations
+Let's create some random but realistic data.
+10 samples
+50 features
+10 aggregations of the 50 features
+factor of 0s and 1s of length 10 (sample's phenotypes)
 
-GEO data from Illumina methylation array 27k (GPL...) and 450K (GPL...) contain two fields UCSC_RefGene_Name and UCSC_RefGene_Group but EPIC (GPL21145) does not contain such information. Annotation files
+```{r data}
+s.n<-10
+f.n<-50
+z.n<-10
+g.n<-8
+
+#data.matrix, features with random normal distribution
+data.matrix<-matrix(data=rnorm(500,5,3),nrow=f.n)
+rownames(data.matrix) <- paste0("f",1:f.n)
+colnames(data.matrix) <- paste0("s",1:s.n)
+
+#prior matrix of features  belonging to z's
+z.matrix<-matrix(data=sample(rep(0:1,1000),500),nrow=f.n)
+rownames(z.matrix) <- paste0("f",1:f.n)
+colnames(z.matrix) <- paste0("z",1:z.n)
+
+#aggregation of features g a
+agg.matrix <- matrix(data=sample(rep(0:1,1000),400),nrow=g.n)
+rownames(agg.matrix) <- paste0("g",1:g.n)
+colnames(agg.matrix) <- paste0("f",1:f.n)
+
+y<-rep(c(0,1),5)
+
+cond <- as.factor(y)
+
+
+```
+
+```{r model}
+
+library(HOmics)
+res<-HOmics(data.matrix,agg.matrix,cond,z.matrix,cores=4)
+class(res)
+
+```
+
+res contains a list with a list containing each analysis result performed for each feature. It is an object of class HOmics, that can be filtered to get significative features after fitting the hierarchical model
+
+```{r modelres}
+
+res[[1]]
+
+```
+
+
+```{r filter }
+
+res.f<-getsignif(res,threshold=0.1,as.data.frame=T)
+res.f
+
+```
+
+# Example of gene expression belonging to different functions with prior information on eQTLs
+
+# Example of gene expression belonging different functions with prior information on miRNAs
+
+```{r eqtl}
+# if (!requireNamespace("BiocManager", quietly = TRUE))
+#     install.packages("BiocManager")
+# 
+# BiocManager::install("eQTL")
+
+#library(eQTL)
+
+```

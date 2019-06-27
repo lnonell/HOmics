@@ -14,10 +14,12 @@ Imports:
     Biobase,
     MCMCvis,
     parallel,
+    doParallel,
     foreach,
     minfi,
     rjags,
-    tidyverse
+    dplyr,
+    purrr
 Collate: 
     'hmodel.R'
     'HOmics.R'

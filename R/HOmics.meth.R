@@ -10,10 +10,11 @@
 #' @param gene.list genes to analyze as a vector with symbols (HUGO)
 #' @param cores cores in case of parallelization. Default=1
 
-#' @import tidyverse
+#' @import dplyr
 #' @import Biobase
 #' @import minfi
 #' @import parallel
+#' @import doParallel
 #' @import foreach
 #' 
 #' @return an object of class HOmics

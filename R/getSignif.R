@@ -6,7 +6,10 @@
 #' @param threshold numerical, the threshold to select associated variables related to the specified param. Default is 0.05
 #' @param as.data.frame collapse as data.frame. Default = TRUE
 
+#' @import purrr
+#' @import dplyr
 #' @export getsignif
+
 
 
 getsignif <- function (res, param = "p.pos", threshold = 0.05, as.data.frame = T)
@@ -20,7 +23,7 @@ getsignif <- function (res, param = "p.pos", threshold = 0.05, as.data.frame = T
   
     res.f <- map(res, function(x) filter(x,!!as.name(param)<threshold))
     res.f <- keep(res.f,function(x) nrow(x)>0)
-    if (as.data.frame)  res.f <- bind_rows(res.f,.id="gene")
+    if (as.data.frame)  res.f <- bind_rows(res.f,.id="group")
     return(res.f)
     
   } 
