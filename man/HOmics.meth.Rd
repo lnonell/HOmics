@@ -2,38 +2,38 @@
 % Please edit documentation in R/HOmics.meth.R
 \name{HOmics.meth}
 \alias{HOmics.meth}
-\title{Integrates transcritpomics and methylation}
+\title{Integrates methylation and gene data}
 \usage{
 HOmics.meth(meth.data = GRSet, pheno.cond.col = "tissue.ch1",
   annot.gene.col = "UCSC_RefGene_Name",
-  annot.z.col = c("UCSC_RefGene_Group"), annot.mult.sep = NULL,
+  annot.z.col = c("UCSC_RefGene_Group"), annot.mult.sep = ";",
   z.matrix = NULL, gene.list = genes.u, pheno.covar.col = NULL,
   cores = 1, ...)
 }
 \arguments{
-\item{meth.data}{GenomicRatioSet o multidataset o expressionset}
+\item{meth.data}{GenomicRatioSet or  ExpressionSet with methylation data}
 
-\item{pheno.cond.col}{response variable, column of annotation that contains condition (one of the variable names contained in pData of meth.data)}
+\item{pheno.cond.col}{response variable, column of annotation that contains condition (one of the variable names contained in pheno data obtained with function pData())}
 
-\item{annot.gene.col}{column of annotation that contains gene names (same annotations as gene.list)}
+\item{annot.gene.col}{column of annotation that contains gene names (same annotations as gene.list). Default = "UCSC_RefGene_Name"}
 
-\item{annot.z.col}{prior information. column of annotation that contains prior variable (for GenomicRatioSet functions getAnnotation(brge_methy) or granges(brge_methy) could be used).}
+\item{annot.z.col}{prior information. Column of annotation that contains prior variable (for GenomicRatioSet functions getAnnotation() or fData() for ExpressionSet). Default = "UCSC_RefGene_Group"}
 
-\item{annot.mult.sep}{separartor in case annot.gene.col and maybe annot.z.col contain multiple values such as in methylation data. Default=NULL}
+\item{annot.mult.sep}{separator for annot.gene.col and maybe annot.z.col multiple values. Default = ";"}
 
-\item{z.matrix}{prior information. Alternative parameter to annot.z.col as matrix with rows the featureNames of meth.data and columns the Zvars can be given. Default=NULL}
+\item{z.matrix}{prior information. Alternative parameter to annot.z.col as matrix with rows the featureNames of meth.data and columns the Zvars can be given. Default = NULL}
 
 \item{gene.list}{genes to analyze as a vector with symbols (HUGO)}
 
-\item{pheno.covar.col}{covariates, column of annotation that contains names of covariates to include in the model (one or more of the variable names contained in pData of meth.data)}
+\item{pheno.covar.col}{covariates, column of annotation that contains names of covariates to include in the model (one or more of the variable names contained in pheno data). Default = NULL}
 
-\item{cores}{cores in case of parallelization. Default=1}
+\item{cores}{cores in case of parallelization. Default = 1 (no parallelization)}
 }
 \value{
 an object of class HOmics
 }
 \description{
-Integrates transcritpomics and methylation
+Integrates methylation and gene data
 }
 \examples{
 to be built

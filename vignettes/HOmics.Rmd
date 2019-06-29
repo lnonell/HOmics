@@ -1,5 +1,5 @@
 ---
-title: "HOmics preparing data"
+title: "HOmics vignette"
 author: "Lara Nonell"
 date: "`r format(Sys.time(), '%d %b %Y')`"
 output: 
@@ -8,45 +8,59 @@ output:
     toc_float: yes
 ---
 
-```{r setup0, include=FALSE}
+```{r setup, include=FALSE}
+
 knitr::opts_chunk$set(echo = TRUE)
+
 ```
 
 # Introduction
 
 HOmics is a package to integrate omics data by capturing hierarchical relations between omics in their association to phenotype. 
-It contains two main functions, the generic HOmics function and HOmics.meth, to analyze specifically methylation of genes affecting to a phenotype. Details on how to precisely apply this latter function are available in the *HOmics gene methylation integration* vignette.
+It contains two main functions, the generic **HOmics** function and **HOmics.meth**, to analyze specifically methylation of genes affecting to a phenotype. Details on how to precisely apply this latter function are available in the [HOmics methylation in genes integration](HOmics methylation in genes integration.html) vignette.
 
 # Installation
 
-HOmics needs the JAGS environment. JAGS (Just Another Gibbs Sampler), is a program for the analysis of Bayesian hierarchical models using Markov Chain Monte Carlo (MCMC) simulation.
+HOmics fits bayesian models and needs the JAGS environment. JAGS (Just Another Gibbs Sampler), is a program for the analysis of Bayesian hierarchical models using Markov Chain Monte Carlo (MCMC) simulation.
 You install JAGS easily through this link: [http://mcmc-jags.sourceforge.net/](http://mcmc-jags.sourceforge.net/)
 Once JAGS is installed you only need to install the package:
 
-```{r setup, include=FALSE}
+```{r HOmics, message = FALSE, warning = FALSE}
+
 # library(devtools)
 # install_github("lnonell/HOmics")
+
 library(HOmics)
+
 ```
 
 HOmics depends on the following R packages:
 
+- Biobase
+- MCMCvis
+- doParallel
+- foreach
+- minfi
+- rjags
+- dplyr
+- purrr
+
 
 # Data
 
-Input data parameters for main function HOmics are the following:
+Input data parameters for main function **HOmics** are the following:
 
-- data.matrix: matrix with rownames the features and columns the samples.
-- agg.matrix: matrix with colnames the features and columns the aggregation criteria, 0 for non pertenance.
-- cond: response variable, usually a numerical factor with two levels representing the conditions to compare. If cond is a numerical vector (continuous response), a hiearchical linear regression model will be fit instead of the default hierarchical logistic regression model.
-- z.matrix column of annotation that contains gene names (same annotations as gene.list). 
-- cores: cores in case of parallelization. Default = 1.
+- **data.matrix**: matrix with rownames the features and columns the samples.
+- **agg.matrix**: matrix with colnames the features and columns the aggregation criteria, 0 for non pertenance.
+- **cond**: response variable, usually a numerical factor with two levels representing the conditions to compare. If cond is a numerical vector (continuous response), a hiearchical linear regression model will be fit instead of the default hierarchical logistic regression model. Details on this parameter are to be found below.
+- **z.matrix**: matrix with prior information related to features, with rownames the features and columns the samples. 
+- **cores**: cores in case of parallelization. Default = 1 (no parallelization).
 
 
 ## Response variable, phenotype or condition
 
-cond should be a vector of the same number of samples studied in data.matrix, as columns (in the same order!)
-Response variable can be continuous or categorical but depending on its nature it will be transformed and either a hierarchical logistic regression model or a hierarchical linear regression model will be fitted.
+**cond** is the response variable and should be a vector with the same length and order as samples in **data.matrix**  (specified as columns).
+Response variable can be continuous or categorical but depending on its nature it will be transformed and then ***HOmics*** will fit either a hierarchical logistic regression model or a hierarchical linear regression model.
 
 ### Categorigal responses
 
@@ -60,9 +74,11 @@ The rules to convert the values are the following.
 if it is already numerical, will be converted to a vector of 0's and 1's using the module 2 function denoted in R with %%
 
 ```{r cond1}
+
 a <- c(2,1,1,1,2)
 y <- a %% 2
 y
+
 ```
 
 if it is a character variable, it will be converted to a numerical factor, to be interpreted by JAGS
@@ -71,87 +87,268 @@ Remember when converting to factor in R, it always assigns the levels in alphabe
 So for instance vector a with 4 character categories, will finally converted to a numerical vector of 0's and 1's this way:
 
 ```{r cond2}
+
 a <- c("z","t","b","z","t","b","z")
 (a.f <- as.factor(a))
 levels(a.f)
 (a.f.n <- as.numeric(a.f))
 (cond <- a.f.n %% 2)
+
 ```
 
 ### Continuous responses
 
 When response variable is continuous, a hierarchical linear model will be performed.
 
-# Example with synthetic data
+# Example 1: Synthetic data
 
 Let's create some random but realistic data.
-10 samples
-50 features
-10 aggregations of the 50 features
-factor of 0s and 1s of length 10 (sample's phenotypes)
+
+- 10 samples
+- 50 features
+- 8 aggregations of the 50 features
+- the response is a factor of 0s and 1s having length 10
+
 
 ```{r data}
-s.n<-10
-f.n<-50
-z.n<-10
-g.n<-8
+
+s.n <- 10
+f.n <- 50
+z.n <- 10
+g.n <- 8
 
 #data.matrix, features with random normal distribution
 data.matrix<-matrix(data=rnorm(500,5,3),nrow=f.n)
 rownames(data.matrix) <- paste0("f",1:f.n)
 colnames(data.matrix) <- paste0("s",1:s.n)
 
-#prior matrix of features  belonging to z's
-z.matrix<-matrix(data=sample(rep(0:1,1000),500),nrow=f.n)
-rownames(z.matrix) <- paste0("f",1:f.n)
-colnames(z.matrix) <- paste0("z",1:z.n)
-
 #aggregation of features g a
 agg.matrix <- matrix(data=sample(rep(0:1,1000),400),nrow=g.n)
 rownames(agg.matrix) <- paste0("g",1:g.n)
 colnames(agg.matrix) <- paste0("f",1:f.n)
 
-y<-rep(c(0,1),5)
 
+#prior matrix of features  belonging to z's
+z.matrix<-matrix(data=sample(rep(0:1,1000),500),nrow=f.n)
+rownames(z.matrix) <- paste0("f",1:f.n)
+colnames(z.matrix) <- paste0("z",1:z.n)
+
+#response
+y <- rep(c(0,1),5)
 cond <- as.factor(y)
 
-
 ```
+
+Let's apply the function **HOmics**, which will fit a hierarchical logistic model.
 
 ```{r model}
 
 library(HOmics)
-res<-HOmics(data.matrix,agg.matrix,cond,z.matrix,cores=4)
+
+res <- HOmics(data.matrix, agg.matrix, cond, z.matrix, cores=4)
 class(res)
 
 ```
 
-res contains a list with a list containing each analysis result performed for each feature. It is an object of class HOmics, that can be filtered to get significative features after fitting the hierarchical model
+Object **res** contains a list with a list containing each analysis result performed for each feature. It is an object of class **HOmics**, which can be subsequently filtered to get significative features.
 
-```{r modelres}
+```{r model_res}
 
 res[[1]]
 
 ```
 
+We filter the results of those features with sigificative positive betas and significative negative betas.
 
-```{r filter }
+```{r filter_res}
 
-res.f<-getsignif(res,threshold=0.1,as.data.frame=T)
-res.f
+res.f.pos <- getsignif(res, param = "p.pos", threshold = 0.1, as.data.frame = T)
+res.f.pos
+
+res.f.neg <- getsignif(res, param = "p.neg", threshold = 0.1, as.data.frame = T)
+res.f.neg
 
 ```
 
-# Example of gene expression belonging to different functions with prior information on eQTLs
 
-# Example of gene expression belonging different functions with prior information on miRNAs
+# Example 2: Ovarian cancer gene expression and miRNA integration
 
-```{r eqtl}
-# if (!requireNamespace("BiocManager", quietly = TRUE))
-#     install.packages("BiocManager")
-# 
-# BiocManager::install("eQTL")
+For this example we will work with data from three different sources:
 
-#library(eQTL)
+- ExpressionSet obtained from bicoconductor's package `r Biocpkg("curatedovarianData")` 
+- Functional annotation obtained from the MSigDB (v 6.2 [http://software.broadinstitute.org/gsea/msigdb/index.jsp](http://software.broadinstitute.org/gsea/msigdb/index.jsp)) through `r CRANpkg("msigdbr")` 
+- Prior information of target miRNA downloaded from TargetScan website (v 7.2  [http://www.targetscan.org/vert_72/](http://www.targetscan.org/vert_72/)) and available as a data object in **HOmics**
 
+With all these information we will perform a functional approach by analyzing each gene set in mSigDB related to ovarian cancer. For all genes in a gene set, we will fit a hierarchical model where prior information known about genes are their predicted miRNAs.
+
+## Data matrix
+
+```{r eset}
+# BiocManager::install("curatedOvarianData")
+
+library(curatedOvarianData)
+data(TCGA_eset)
+TCGA_eset
+
+```
+
+Notice that TCGA_eset is an object of class *ExpressionSet*.
+We will compare ovarian cancer tumor samples in stage 4 with recurrence versus healthy samples. For that, we will subset the original *ExpressionSet* with the required constraints. Once subsetted the original TCGA_eset object, we will extract the expression data (with the function *exprs()*) and the phenotype variables (with the function *pData()*).
+
+```{r eset_sampleselection}
+
+pheno <- pData(TCGA_eset)
+table(pheno$sample_type)
+
+TCGA_subset <- TCGA_eset[,pheno$sample_type=="healthy" | 
+                           (pheno$sample_type=="tumor" & pheno$tumorstage==4 & pheno$recurrence_status=="recurrence")]
+
+expr.m <- exprs(TCGA_subset)
+dim(expr.m) 
+pheno <- pData(TCGA_subset)
+
+```
+
+## Response vector
+
+Let's obtain the condition vector. 
+
+```{r eset_condition}
+
+cond <- pheno$sample_type
+cond
+
+```
+
+Notice that this is a character categorical vector.
+
+## Aggregated matrix
+
+The aggregated matrix is obtained from the MSigDB through `r CRANpkg("msigdbr")`.
+To get pathawys in collection *curated gene sets* (C2) with keyword *ovarian* follow these steps:
+
+```{r msigdb}
+# install.packages(msigdbr)
+
+library(msigdbr)
+
+c2 = msigdbr(species = "Homo sapiens", category = "C2")
+
+c2.ov <- c2[grep("OVARIAN", c2$gs_name),]
+c2.ov
+
+```
+
+And, by manipulating the results, we obtain the aggregated matrix.
+
+```{r aggregated_matrix}
+
+agg.table <- table(c2.ov$gs_name, c2.ov$human_gene_symbol)
+
+agg.matrix <- as.matrix(as.data.frame.matrix(agg.table))
+
+dim(agg.matrix)
+
+table(agg.matrix)  # 0s and 1s only
+
+```
+
+14 gene sets where selected.
+
+## Prior matrix
+
+The prior matrix is obtained from the downloaded information in TargetScan.
+
+```{r mirnas}
+# install.packages("readr")
+
+data("targets.hs.6.2", package="HOmics")
+
+targets
+
+```
+
+Let's filter the targets to get only those with probability of conserved targeting (P<sub>CT</sub>) >0.5 and generate the prior information matrix, i.e. the z.matrix.
+
+```{r mirnas_filter}
+
+targets.f <- targets %>% mutate(PCT= as.numeric(PCT)) %>% filter(PCT >0.5) 
+
+z.table <- table(targets.f$`Gene Symbol`, targets.f$`miR Family`)
+
+z.matrix <- as.matrix(as.data.frame.matrix(z.table))
+
+z.matrix[z.matrix>1]<-1
+
+table(z.matrix) # 0s and 1s only
+
+```
+
+To make sure that features (in this case genes) in the three matrices are the same, we do:
+
+```{r common_genes}
+
+common.genes <- intersect(intersect(rownames(expr.m), colnames(agg.matrix)), 
+                          rownames(z.matrix))
+
+length(common.genes) #1286
+
+agg.matrix <- agg.matrix[,common.genes]
+
+expr.m <- expr.m[common.genes,]
+
+z.matrix <- z.matrix[common.genes,]
+
+```
+
+And finally, we just need to decide the number of cores and apply function **HOmics**.
+
+```{r model2}
+
+library(HOmics)
+
+res2 <- HOmics(data.matrix = expr.m, agg.matrix  = agg.matrix, cond = cond, z.matrix = z.matrix, cores = 6)
+
+class(res2)
+
+length(res2)
+
+```
+
+Note that 6 cores were used in this case. For details on parallelization check section *Parallelization in HOmics*.
+
+Let's filter the results to obtain significant results.
+
+
+```{r filter2}
+
+res2.f.pos <- getsignif(res2, param = "p.pos",threshold = 0.05, as.data.frame = T)
+res2.f.pos
+
+res2.f.neg <- getsignif(res2, param = "p.neg",threshold = 0.05, as.data.frame = T)
+res2.f.neg
+
+```
+
+# Example 3: Methylation data
+
+HOmics contains a specific function to analyze methylation array data. Check vignette.
+
+# Parallelization
+
+Parallelization is enabled with the use of packages `r CRANpkg("doParallel")`  and `r CRANpkg("foreach")`, which should work in all operative systems. 
+
+To parallelize use function *detectCores()* in `r CRANpkg("parallel")`to select the number of cores to work.
+
+```{r cores}
+
+detectCores()
+
+```
+
+# Session info {.unnumbered}
+
+```{r sessionInfo, echo=FALSE}
+
+sessionInfo()
 ```

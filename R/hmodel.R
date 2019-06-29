@@ -34,8 +34,6 @@ hmodel <- function(g.matrix,z.matrix,cond,cont){
     jags.file <- ifelse(cont,
                         system.file("JAGSmodels", "hmodel.cont.txt", package="HOmics"),
                         system.file("JAGSmodels", "hmodel.binary.txt", package="HOmics"))
-    # jags.file <- ifelse(cont,"D:/Doctorat/Hierarchical/Package/HOmics/JAGSmodels/hmodel.cont.txt",
-    #                     "D:/Doctorat/Hierarchical/Package/HOmics/JAGSmodels/hmodel.binary.txt")
     
     jags.m <- jags.model( file = jags.file, data = dat, n.chains = 3, n.adapt = 1000 ) 
    

@@ -1,14 +1,14 @@
-#' Integrates transcritpomics and methylation
+#' Integrates methylation and gene data
 #'
-#' @param meth.data GenomicRatioSet o multidataset o expressionset
-#' @param pheno.cond.col response variable, column of annotation that contains condition (one of the variable names contained in pData of meth.data)
-#' @param pheno.covar.col covariates, column of annotation that contains names of covariates to include in the model (one or more of the variable names contained in pData of meth.data)
-#' @param annot.gene.col column of annotation that contains gene names (same annotations as gene.list) 
-#' @param annot.z.col prior information. column of annotation that contains prior variable (for GenomicRatioSet functions getAnnotation(brge_methy) or granges(brge_methy) could be used). 
-#' @param annot.mult.sep separartor in case annot.gene.col and maybe annot.z.col contain multiple values such as in methylation data. Default=NULL
-#' @param z.matrix prior information. Alternative parameter to annot.z.col as matrix with rows the featureNames of meth.data and columns the Zvars can be given. Default=NULL
+#' @param meth.data GenomicRatioSet or  ExpressionSet with methylation data
+#' @param pheno.cond.col response variable, column of annotation that contains condition (one of the variable names contained in pheno data obtained with function pData())
+#' @param pheno.covar.col covariates, column of annotation that contains names of covariates to include in the model (one or more of the variable names contained in pheno data). Default = NULL
+#' @param annot.gene.col column of annotation that contains gene names (same annotations as gene.list). Default = "UCSC_RefGene_Name"
+#' @param annot.z.col prior information. Column of annotation that contains prior variable (for GenomicRatioSet functions getAnnotation() or fData() for ExpressionSet). Default = "UCSC_RefGene_Group"
+#' @param annot.mult.sep separator for annot.gene.col and maybe annot.z.col multiple values. Default = ";"
+#' @param z.matrix prior information. Alternative parameter to annot.z.col as matrix with rows the featureNames of meth.data and columns the Zvars can be given. Default = NULL
 #' @param gene.list genes to analyze as a vector with symbols (HUGO)
-#' @param cores cores in case of parallelization. Default=1
+#' @param cores cores in case of parallelization. Default = 1 (no parallelization)
 
 #' @import dplyr
 #' @import Biobase
@@ -24,13 +24,12 @@
 #' @export HOmics.meth
 
 
-HOmics.meth <- function(meth.data=GRSet,pheno.cond.col="tissue.ch1",annot.gene.col="UCSC_RefGene_Name",
-                      annot.z.col=c("UCSC_RefGene_Group"),annot.mult.sep=NULL,z.matrix=NULL,gene.list=genes.u,
-                      pheno.covar.col=NULL,cores=1,
+HOmics.meth <- function(meth.data = GRSet, pheno.cond.col="tissue.ch1", annot.gene.col = "UCSC_RefGene_Name",
+                      annot.z.col = c("UCSC_RefGene_Group"), annot.mult.sep = ";", z.matrix = NULL, gene.list = genes.u,
+                      pheno.covar.col = NULL, cores = 1,
                       ...)
 {
   
-# source(file="D:/Doctorat/Hierarchical/Package/HOmics/R/hmodel.R")
   cont = FALSE
   covar = FALSE
   #########################
@@ -48,23 +47,23 @@ HOmics.meth <- function(meth.data=GRSet,pheno.cond.col="tissue.ch1",annot.gene.c
     annot.data <- as_tibble(annot.data)
     
     cpg.data <- getBeta(meth.data)
+    
   } else if (is(meth.data, "ExpressionSet")) {
+    
     pheno.data <- pData(meth.data)
-    #   col.nm <- colnames(pheno.data) #to prevent from name changing
     pheno.data$id <- rownames(pheno.data)
     pheno.data <- as_tibble(pheno.data)
-    #    colnames(pheno.data) <-col.nm
     
     annot.data <- fData(meth.data)
     annot.data$cpg <- rownames(annot.data) #AKI: CANVIAR CPG
     annot.data <- as_tibble(annot.data)
     
     cpg.data <- exprs(meth.data)
+    
   } else stop("meth.data should be a GenomicRatioSet or an ExpressionSet or a SummarizedExperiment") 
   
-  
   if (is.null(pheno.cond.col) | !(pheno.cond.col %in% colnames(pheno.data))) stop("cond variable should be a variable in phenoData slot")
-  #check levels in cond
+ 
   if (is.null(annot.gene.col) | !(annot.gene.col %in% colnames(annot.data))) stop("annot.gene.col should be a column in the annotations slot")
   
   #########################
@@ -80,49 +79,65 @@ HOmics.meth <- function(meth.data=GRSet,pheno.cond.col="tissue.ch1",annot.gene.c
     if (is.null(annot.z.col) | !(annot.z.col %in% colnames(annot.data))) stop("annot.z.col should be a column in the annotations slot of meth.data")
     
   } else {
+    
     #check common cpgs
     cpgs.c<-intersect(rownames(cpg.data),rownames(z.matrix))
+    
     if (length(cpgs.c)==0) stop ("z.matrix must contain rownames matching featureNames in meth.data")
+    
     else
+      
       cat("z.matrix will be used to construct the hierarchical model\n")
       z.matrix <- z.matrix[cpgs.c,]
       cpg.data <- cpg.data[cpgs.c,]
       annot.data <- annot.data %>% filter(cpg %in% cpgs.c)
+      
   }
     
-    #ARGCHECK: phenotype
-    #variable selection: SOLVE NAMING
   cond.v <- pheno.data %>% select (!!as.name(pheno.cond.col)) %>% pull()
+  
   if (is.factor(cond.v)) {
+    
     if (nlevels(cond.v) < 2) stop(paste0("vector ", pheno.cond.col, " is a factor but must contain at least 2 levels" )) 
+    
     else if (nlevels(cond.v) > 2) {
+      
       cat(paste0(pheno.cond.col," is a factor and contains more than three levels, it has been converted to a numerical vector of 0s and 1s\n" ))
       cond <- as.numeric(cond.v) %% 2
       print(cond)
+      
     } else {
+      
       cat(paste0(pheno.cond.col," cond is a factor, it has been converted to a numerical vector of 0s and 1s to fit a hierarchical logistic model\n" ))
       cond <- as.numeric(cond.v) %% 2
       print(cond)
+      
     }
   } else if (is.character(cond.v)) {
+    
     cat(paste0(pheno.cond.col," is a character vector, it has been converted to a numerical vector of 0s and 1s\n" ))
     cond <- as.numeric(as.factor(cond.v)) %% 2
     print(cond)
+    
   } else if (is.numeric(cond.v)) {
+    
     cat(paste0(pheno.cond.col," is a numerical vector, a hierarchical linear model will be constructed\n" ))
     cond <- cond.v
     cont <- TRUE
     
   } else stop ("Unrecognized type of condition")  
 
- rm(cond.v)
+  rm(cond.v)
   #########################
   ## Covariates  ####
   #########################
   #flag covar
   #if (!is.null(pheno.covar.col)) 
   
-  #ARGCHECK: cores numeric
+  #########################
+  #######  Cores  #########
+  #########################
+  
   if (!is.numeric(cores)) stop("cores should be numeric")
 
   #########################
@@ -133,7 +148,7 @@ N = length(gene.list)
 cl <- makeCluster(cores,type="PSOCK",outfile="output.txt")
 registerDoParallel(cl)
 
-# depending on cond and covariates a different function should be used 
+
 cpg.models<- foreach(i=1:N,.packages=c("rjags","tidyverse","MCMCvis"),.export="hmodel") %dopar% {
     gen <- gene.list[i]
     #select annotations for that gene in specified col

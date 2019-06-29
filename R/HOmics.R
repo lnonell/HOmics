@@ -1,10 +1,10 @@
-#' Integrates transcritpomics and methylation
+#' Integrates two omic data through hierarchical modeling
 #'
 #' @param data.matrix matrix with rownames the features and columns the samples
 #' @param agg.matrix matrix with colnames the features and rows the groups according to some feature aggregation criteria, 0 for non pertenance
 #' @param cond response variable, usually a numerical factor with two levels representing the conditions to compare. If cond is a numerical vector (continuous response), a hiearchical linear regression model will be fit instead of the default hierarchical logistic regression model
-#' @param z.matrix column of annotation that contains gene names (same annotations as gene.list) 
-#' @param cores cores in case of parallelization. Default=1
+#' @param z.matrix matrix with prior information related to features, with rownames the features and columns the samples
+#' @param cores cores in case of parallelization. Default = 1 (no parallelization)
 
 #' @import dplyr
 #' @import parallel
@@ -25,6 +25,9 @@ HOmics <- function(data.matrix,agg.matrix,cond,z.matrix,cores=1,
  # source(file="D:/Doctorat/Hierarchical/Package/HOmics/R/hmodel.R")
   
   call<-match.call() #to be returned at the end
+  
+  cont = FALSE
+  covar = FALSE
   
   ############################
   ###### Data relations ######
@@ -56,21 +59,30 @@ HOmics <- function(data.matrix,agg.matrix,cond,z.matrix,cores=1,
   ######### Condition #########
   #############################
   if (is.factor(cond)) {
+    
     if (nlevels(cond) < 2) stop(paste0("cond is a factor but must contain at least 2 levels" )) 
+    
     else if (nlevels(cond) > 2) {
+      
       cat(paste0("cond is a factor and contains more than three levels, it has been converted to a numerical vector of 0s and 1s\n" ))
       cond <- as.numeric(cond) %% 2
       print(cond)
+      
     } else {
+      
       cat(paste0("cond is a factor, it has been converted to a numerical vector of 0s and 1s to fit a hierarchical logistic model\n" ))
       cond <- as.numeric(cond) %% 2
       print(cond)
+      
     }
   } else if (is.character(cond)) {
+    
     cat(paste0("cond is a character vector, it has been converted to a numerical vector of 0s and 1s\n" ))
     cond <- as.numeric(as.factor(cond)) %% 2
     print(cond)
+    
   } else if (is.numeric(cond)) {
+    
     cat(paste0("cond is a numerical vector, a hierarchical linear model will be constructed\n" ))
     cond <- cond
     cont <- TRUE
@@ -83,9 +95,6 @@ HOmics <- function(data.matrix,agg.matrix,cond,z.matrix,cores=1,
   #############################
   
   if (!is.numeric(cores)) stop("cores should be numeric")
-  
-  cont = FALSE
-  covar = FALSE
   
   #############################
   ########### LOOP ############

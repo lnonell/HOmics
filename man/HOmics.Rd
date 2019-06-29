@@ -2,7 +2,7 @@
 % Please edit documentation in R/HOmics.R
 \name{HOmics}
 \alias{HOmics}
-\title{Integrates transcritpomics and methylation}
+\title{Integrates two omic data through hierarchical modeling}
 \usage{
 HOmics(data.matrix, agg.matrix, cond, z.matrix, cores = 1, ...)
 }
@@ -13,15 +13,15 @@ HOmics(data.matrix, agg.matrix, cond, z.matrix, cores = 1, ...)
 
 \item{cond}{response variable, usually a numerical factor with two levels representing the conditions to compare. If cond is a numerical vector (continuous response), a hiearchical linear regression model will be fit instead of the default hierarchical logistic regression model}
 
-\item{z.matrix}{column of annotation that contains gene names (same annotations as gene.list)}
+\item{z.matrix}{matrix with prior information related to features, with rownames the features and columns the samples}
 
-\item{cores}{cores in case of parallelization. Default=1}
+\item{cores}{cores in case of parallelization. Default = 1 (no parallelization)}
 }
 \value{
 an object of class HOmics
 }
 \description{
-Integrates transcritpomics and methylation
+Integrates two omic data through hierarchical modeling
 }
 \examples{
 to be built
