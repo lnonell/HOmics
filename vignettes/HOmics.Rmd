@@ -10,22 +10,22 @@ output:
 
 ```{r setup, include=FALSE}
 
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
 
 ```
 
 # Introduction
 
 HOmics is a package to integrate omics data by capturing hierarchical relations between omics in their association to phenotype. 
-It contains two main functions, the generic **HOmics** function and **HOmics.meth**, to analyze specifically methylation of genes affecting to a phenotype. Details on how to precisely apply this latter function are available in the [HOmics methylation in genes integration](HOmics methylation in genes integration.html) vignette.
+It contains two main functions, the generic **HOmics** function and **HOmics.meth**, to analyze specifically methylation of genes affecting a phenotype. Details on how to apply this latter function are available in the [HOmics methylation in genes integration](HOmics methylation in genes integration.html) vignette.
 
 # Installation
 
-HOmics fits bayesian models and needs the JAGS environment. JAGS (Just Another Gibbs Sampler), is a program for the analysis of Bayesian hierarchical models using Markov Chain Monte Carlo (MCMC) simulation.
-You install JAGS easily through this link: [http://mcmc-jags.sourceforge.net/](http://mcmc-jags.sourceforge.net/)
-Once JAGS is installed you only need to install the package:
+HOmics fits Bayesian models through the package `r CRANpkg("rjags")` which needs the JAGS (Just Another Gibbs Sampler) environment to be installed. JAGS is a program for the analysis of Bayesian hierarchical models using Markov Chain Monte Carlo (MCMC) simulation.
+You can install JAGS easily through this link: [http://mcmc-jags.sourceforge.net/](http://mcmc-jags.sourceforge.net/)
+Once JAGS is installed you only need to install the **HOmics** package:
 
-```{r HOmics, message = FALSE, warning = FALSE}
+```{r HOmics}
 
 # library(devtools)
 # install_github("lnonell/HOmics")
@@ -37,11 +37,11 @@ library(HOmics)
 HOmics depends on the following R packages:
 
 - Biobase
-- MCMCvis
 - doParallel
 - foreach
 - minfi
 - rjags
+- MCMCvis
 - dplyr
 - purrr
 
@@ -54,6 +54,7 @@ Input data parameters for main function **HOmics** are the following:
 - **agg.matrix**: matrix with colnames the features and columns the aggregation criteria, 0 for non pertenance.
 - **cond**: response variable, usually a numerical factor with two levels representing the conditions to compare. If cond is a numerical vector (continuous response), a hiearchical linear regression model will be fit instead of the default hierarchical logistic regression model. Details on this parameter are to be found below.
 - **z.matrix**: matrix with prior information related to features, with rownames the features and columns the samples. 
+- **cont.covar.matrix**: vector or matrix of continuous covariates, with samples as rownames (in the same order as cond) and covariates as columns. Default = NULL
 - **cores**: cores in case of parallelization. Default = 1 (no parallelization).
 
 
@@ -66,12 +67,8 @@ Response variable can be continuous or categorical but depending on its nature i
 
 When response variable is categorical, a hierarchical logistic model will be performed.
 
-In such cases, some considerations need to be taken.
-
 JAGS needs a vector with 0 and 1, so it will be converted if it is not the case
-The rules to convert the values are the following.
-
-if it is already numerical, will be converted to a vector of 0's and 1's using the module 2 function denoted in R with %%
+The rules to convert the values are the following: if vector it is already numerical, it will be converted to a vector of 0's and 1's using the module 2 function denoted in R with %%.
 
 ```{r cond1}
 
@@ -81,10 +78,9 @@ y
 
 ```
 
-if it is a character variable, it will be converted to a numerical factor, to be interpreted by JAGS
+if it is a character variable, it will be converted to a numerical factor.
 
-Remember when converting to factor in R, it always assigns the levels in alphabetical order.
-So for instance vector a with 4 character categories, will finally converted to a numerical vector of 0's and 1's this way:
+Remember when converting to factor in R, it assigns the levels in alphabetical order by default. So for instance vector a with 4 character categories, will finally converted to a numerical vector of 0's and 1's this way:
 
 ```{r cond2}
 
@@ -98,7 +94,39 @@ levels(a.f)
 
 ### Continuous responses
 
-When response variable is continuous, a hierarchical linear model will be performed.
+When the response variable is continuous, a hierarchical linear model will be fitted.
+
+## Covariates
+
+The model accepts one or more continuous covariates. The values must be in the same sample order as **cond** and as the columns of **data.matrix**.
+
+# The model
+
+**HOmics** fits a Bayesian hierarchical model for each group of features as specified in the **agg.matrix**. The steps to fit each model are the following:
+
+1. Check and prepare data
+2. Depending on the nature of the response variable **cond** and if covariates are included (**cont.covar.matrix**), a different JAGS model is defined. A hierarchical logistic model is fitted if **cond** is a categorical variable whereas a hierarchical linear model is fitted if response is continuous. Each model specifies the likelihood, prior and hyper prior functions and parameters. Models are stored in the /inst directory of the package
+3. `r CRANpkg("rjags")` is used to fit the hierarchical model with the MCMC approach
+4. The model is initially fitted with three Markov chains and default initial values
+5. The model is updated in the *burn in* phase, with 2000 iterations
+6. Coefficients (beta estimates) for all features are obtained for the posterior distribution by sampling, with 1000 iterations
+7. Function MCMCsummary of package `r CRANpkg("MCMCvis")` is used to obtain summaries
+
+Convergence has been tested in simulated data with these parameters and the three Markov chains were considerably stable.
+
+# The results
+
+The output given by **HOmics** function is an object of class **Homics**. It contains a list of results for each analysis performed on each group of features. 
+
+For each element in the results object, a tibble with the following columns is specified:
+
+- mean, sd: mean and standar deviation of coefficients for all iterations in all chains (3000)
+- 2.5%, 50%, 97.5%: specified percentiles for coefficients for all iterations in all chains (3000)
+- Rhat: Potential scale reduction statistic (Rhat). Values near 1 suggest convergence
+- n.eff: number of effective samples for each parameter. Should the higher the better
+
+**HOmics** objects can be subsequently filtered with function **getsignif()** to get significative features.
+
 
 # Example 1: Synthetic data
 
@@ -106,7 +134,7 @@ Let's create some random but realistic data.
 
 - 10 samples
 - 50 features
-- 8 aggregations of the 50 features
+- 8 groups of the 50 features
 - the response is a factor of 0s and 1s having length 10
 
 
@@ -145,12 +173,17 @@ Let's apply the function **HOmics**, which will fit a hierarchical logistic mode
 
 library(HOmics)
 
-res <- HOmics(data.matrix, agg.matrix, cond, z.matrix, cores=4)
+res<-HOmics(data.matrix=data.matrix,
+            agg.matrix=agg.matrix,
+            cond=cond,
+            z.matrix=z.matrix,
+            cont.covar.matrix = NULL,
+            cores=4) 
 class(res)
 
 ```
 
-Object **res** contains a list with a list containing each analysis result performed for each feature. It is an object of class **HOmics**, which can be subsequently filtered to get significative features.
+Object **res** is an object of class **HOmics**, which contains a list of results for each group of features.
 
 ```{r model_res}
 
@@ -170,8 +203,52 @@ res.f.neg
 
 ```
 
+# Example 2: Synthetic data with continuous response
 
-# Example 2: Ovarian cancer gene expression and miRNA integration
+```{r model2}
+
+cond.cont <- rnorm(10,1,7)
+
+res2<-HOmics(data.matrix=data.matrix,
+            agg.matrix=agg.matrix,
+            cond=cond.cont,
+            z.matrix=z.matrix,
+            cont.covar.matrix = NULL,
+            cores=4) 
+
+```
+
+# Example 3: Synthetic data with an extra continuous covariate
+
+```{r model3}
+
+covariate <- rnorm(10,3,4)
+
+res3<-HOmics(data.matrix=data.matrix,
+            agg.matrix=agg.matrix,
+            cond=cond,
+            z.matrix=z.matrix,
+            cont.covar.matrix = covariate,
+            cores=4) 
+
+```
+
+# Example 4: Synthetic data with two extra continuous covariates
+
+```{r model4}
+
+co.matrix <- matrix(rnorm(20,3,4),nrow=10)
+
+res4<-HOmics(data.matrix=data.matrix,
+            agg.matrix=agg.matrix,
+            cond=cond,
+            z.matrix=z.matrix,
+            cont.covar.matrix = co.matrix,
+            cores=4) 
+
+```
+
+# Example 5: Ovarian cancer gene expression and miRNA integration
 
 For this example we will work with data from three different sources:
 
@@ -291,7 +368,7 @@ To make sure that features (in this case genes) in the three matrices are the sa
 common.genes <- intersect(intersect(rownames(expr.m), colnames(agg.matrix)), 
                           rownames(z.matrix))
 
-length(common.genes) #1286
+length(common.genes) 
 
 agg.matrix <- agg.matrix[,common.genes]
 
@@ -303,15 +380,20 @@ z.matrix <- z.matrix[common.genes,]
 
 And finally, we just need to decide the number of cores and apply function **HOmics**.
 
-```{r model2}
+```{r model5}
 
 library(HOmics)
 
-res2 <- HOmics(data.matrix = expr.m, agg.matrix  = agg.matrix, cond = cond, z.matrix = z.matrix, cores = 6)
+res5 <- HOmics(data.matrix = expr.m, 
+               agg.matrix  = agg.matrix, 
+               cond = cond, 
+               z.matrix = z.matrix, 
+               cont.covar.matrix = NULL, 
+               cores = 6)
 
-class(res2)
+class(res5)
 
-length(res2)
+length(res5)
 
 ```
 
@@ -320,13 +402,13 @@ Note that 6 cores were used in this case. For details on parallelization check s
 Let's filter the results to obtain significant results.
 
 
-```{r filter2}
+```{r filter5}
 
-res2.f.pos <- getsignif(res2, param = "p.pos",threshold = 0.05, as.data.frame = T)
-res2.f.pos
+res5.f.pos <- getsignif(res5, param = "p.pos",threshold = 0.05, as.data.frame = T)
+res5.f.pos
 
-res2.f.neg <- getsignif(res2, param = "p.neg",threshold = 0.05, as.data.frame = T)
-res2.f.neg
+res5.f.neg <- getsignif(res5, param = "p.neg",threshold = 0.05, as.data.frame = T)
+res5.f.neg
 
 ```
 
@@ -338,7 +420,7 @@ HOmics contains a specific function to analyze methylation array data. Check vig
 
 Parallelization is enabled with the use of packages `r CRANpkg("doParallel")`  and `r CRANpkg("foreach")`, which should work in all operative systems. 
 
-To parallelize use function *detectCores()* in `r CRANpkg("parallel")`to select the number of cores to work.
+To parallelize use function *detectCores()* in `r CRANpkg("parallel")` to select the number of cores to work.
 
 ```{r cores}
 
@@ -351,4 +433,5 @@ detectCores()
 ```{r sessionInfo, echo=FALSE}
 
 sessionInfo()
+
 ```

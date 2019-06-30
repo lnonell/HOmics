@@ -4,7 +4,7 @@
 \alias{hmodel}
 \title{Performs rjags models}
 \usage{
-hmodel(g.matrix, z.matrix, cond, cont)
+hmodel(g.matrix, z.matrix, cond, cont, covar.matrix = NULL, seed)
 }
 \arguments{
 \item{g.matrix}{matrix of cpgs, with samples in rows and cpgs in columns}
@@ -14,6 +14,8 @@ hmodel(g.matrix, z.matrix, cond, cont)
 \item{cond}{response variable, as numerical vector}
 
 \item{cont}{flag to consider a continuous response}
+
+\item{covar.matrix}{matrix of continuous covariates (in columns)}
 }
 \value{
 results for a gene model

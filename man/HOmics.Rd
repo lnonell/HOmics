@@ -4,16 +4,21 @@
 \alias{HOmics}
 \title{Integrates two omic data through hierarchical modeling}
 \usage{
-HOmics(data.matrix, agg.matrix, cond, z.matrix, cores = 1, ...)
+HOmics(data.matrix, agg.matrix, cond, z.matrix, cont.covar.matrix = NULL,
+  seed = NULL, cores = 1, ...)
 }
 \arguments{
-\item{data.matrix}{matrix with rownames the features and columns the samples}
+\item{data.matrix}{matrix with features as rownames and samples as columns}
 
 \item{agg.matrix}{matrix with colnames the features and rows the groups according to some feature aggregation criteria, 0 for non pertenance}
 
 \item{cond}{response variable, usually a numerical factor with two levels representing the conditions to compare. If cond is a numerical vector (continuous response), a hiearchical linear regression model will be fit instead of the default hierarchical logistic regression model}
 
 \item{z.matrix}{matrix with prior information related to features, with rownames the features and columns the samples}
+
+\item{cont.covar.matrix}{vector or matrix of continuous covariates, with samples as rownames (in the same order as cond) and covariates as columns. Default = NULL}
+
+\item{seed}{numerical seed for the use of function set.seed in the generation of the model, for reproducibility}
 
 \item{cores}{cores in case of parallelization. Default = 1 (no parallelization)}
 }

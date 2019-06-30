@@ -1,9 +1,11 @@
 #' Integrates two omic data through hierarchical modeling
 #'
-#' @param data.matrix matrix with rownames the features and columns the samples
+#' @param data.matrix matrix with features as rownames and samples as columns
 #' @param agg.matrix matrix with colnames the features and rows the groups according to some feature aggregation criteria, 0 for non pertenance
 #' @param cond response variable, usually a numerical factor with two levels representing the conditions to compare. If cond is a numerical vector (continuous response), a hiearchical linear regression model will be fit instead of the default hierarchical logistic regression model
 #' @param z.matrix matrix with prior information related to features, with rownames the features and columns the samples
+#' @param cont.covar.matrix vector or matrix of continuous covariates, with samples as rownames (in the same order as cond) and covariates as columns. Default = NULL
+#' @param seed numerical seed for the use of function set.seed in the generation of the model, for reproducibility
 #' @param cores cores in case of parallelization. Default = 1 (no parallelization)
 
 #' @import dplyr
@@ -18,8 +20,7 @@
 #' @export HOmics
 
 
-HOmics <- function(data.matrix,agg.matrix,cond,z.matrix,cores=1,
-                      ...)
+HOmics <- function(data.matrix, agg.matrix, cond, z.matrix, cont.covar.matrix = NULL, seed=NULL, cores=1, ...)
 {
   
  # source(file="D:/Doctorat/Hierarchical/Package/HOmics/R/hmodel.R")
@@ -27,7 +28,6 @@ HOmics <- function(data.matrix,agg.matrix,cond,z.matrix,cores=1,
   call<-match.call() #to be returned at the end
   
   cont = FALSE
-  covar = FALSE
   
   ############################
   ###### Data relations ######
@@ -89,7 +89,20 @@ HOmics <- function(data.matrix,agg.matrix,cond,z.matrix,cores=1,
     
   } else stop ("Unrecognized type of condition")  
   
-
+  #############################
+  #######  Covariates  ########
+  #############################
+  #only continuous for the moment
+  if(!is.null(cont.covar.matrix)){
+    if (is.vector(cont.covar.matrix)){
+      if (length(cont.covar.matrix) != length(cond) | !is.numeric(cont.covar.matrix))
+       stop("cont.covar.matrix is a vector but must be continuous and have the same length as cond")
+    } else if (nrow(cont.covar.matrix)!= length(cond) | !is.numeric(cont.covar.matrix)) 
+      stop("cont.covar.matrix is a matrix but must be continuous and have the same number of rows as length of cond")
+  cat(paste0("cont.covar.matrix will be included in the hierarchical model, as continuous covariates\n" ))
+  } 
+    
+ 
   #############################
   ############ Cores ##########
   #############################
@@ -110,7 +123,12 @@ HOmics <- function(data.matrix,agg.matrix,cond,z.matrix,cores=1,
     gi.f <- colnames(agg.matrix)[as.logical(agg.matrix[i,])]
     g.matrix <- data.matrix[gi.f,] #un lio de terminologia amb la g.matrix que es la data matrix ara, canviar!
     z.mat <- z.matrix[gi.f,]
-    hmodel(g.matrix,z.mat,cond,cont=cont)  
+    hmodel(g.matrix = g.matrix, 
+           z.matrix = z.mat,
+           cond = cond, 
+           cont = cont, 
+           covar.matrix = cont.covar.matrix, 
+           seed = seed)  
   }
   stopCluster(cl)
   

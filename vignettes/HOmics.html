@@ -214,18 +214,18 @@ div.tocify {
 
 <h1 class="title toc-ignore">HOmics vignette</h1>
 <p class="author-name">Lara Nonell</p>
-<h4 class="date"><em>29 jun. 2019</em></h4>
+<h4 class="date"><em>30 jun. 2019</em></h4>
 
 </div>
 
 
 <div id="introduction" class="section level1">
 <h1><span class="header-section-number">1</span> Introduction</h1>
-<p>HOmics is a package to integrate omics data by capturing hierarchical relations between omics in their association to phenotype. It contains two main functions, the generic <strong>HOmics</strong> function and <strong>HOmics.meth</strong>, to analyze specifically methylation of genes affecting to a phenotype. Details on how to precisely apply this latter function are available in the <a href="HOmics%20methylation%20in%20genes%20integration.html">HOmics methylation in genes integration</a> vignette.</p>
+<p>HOmics is a package to integrate omics data by capturing hierarchical relations between omics in their association to phenotype. It contains two main functions, the generic <strong>HOmics</strong> function and <strong>HOmics.meth</strong>, to analyze specifically methylation of genes affecting a phenotype. Details on how to apply this latter function are available in the <a href="HOmics%20methylation%20in%20genes%20integration.html">HOmics methylation in genes integration</a> vignette.</p>
 </div>
 <div id="installation" class="section level1">
 <h1><span class="header-section-number">2</span> Installation</h1>
-<p>HOmics fits bayesian models and needs the JAGS environment. JAGS (Just Another Gibbs Sampler), is a program for the analysis of Bayesian hierarchical models using Markov Chain Monte Carlo (MCMC) simulation. You install JAGS easily through this link: <a href="http://mcmc-jags.sourceforge.net/" class="uri">http://mcmc-jags.sourceforge.net/</a> Once JAGS is installed you only need to install the package:</p>
+<p>HOmics fits Bayesian models through the package <em><a href="https://CRAN.R-project.org/package=rjags">rjags</a></em> which needs the JAGS (Just Another Gibbs Sampler) environment to be installed. JAGS is a program for the analysis of Bayesian hierarchical models using Markov Chain Monte Carlo (MCMC) simulation. You can install JAGS easily through this link: <a href="http://mcmc-jags.sourceforge.net/" class="uri">http://mcmc-jags.sourceforge.net/</a> Once JAGS is installed you only need to install the <strong>HOmics</strong> package:</p>
 <pre class="r"><code># library(devtools)
 # install_github(&quot;lnonell/HOmics&quot;)
 
@@ -233,11 +233,11 @@ library(HOmics)</code></pre>
 <p>HOmics depends on the following R packages:</p>
 <ul>
 <li>Biobase</li>
-<li>MCMCvis</li>
 <li>doParallel</li>
 <li>foreach</li>
 <li>minfi</li>
 <li>rjags</li>
+<li>MCMCvis</li>
 <li>dplyr</li>
 <li>purrr</li>
 </ul>
@@ -250,6 +250,7 @@ library(HOmics)</code></pre>
 <li><strong>agg.matrix</strong>: matrix with colnames the features and columns the aggregation criteria, 0 for non pertenance.</li>
 <li><strong>cond</strong>: response variable, usually a numerical factor with two levels representing the conditions to compare. If cond is a numerical vector (continuous response), a hiearchical linear regression model will be fit instead of the default hierarchical logistic regression model. Details on this parameter are to be found below.</li>
 <li><strong>z.matrix</strong>: matrix with prior information related to features, with rownames the features and columns the samples.</li>
+<li><strong>cont.covar.matrix</strong>: vector or matrix of continuous covariates, with samples as rownames (in the same order as cond) and covariates as columns. Default = NULL</li>
 <li><strong>cores</strong>: cores in case of parallelization. Default = 1 (no parallelization).</li>
 </ul>
 <div id="response-variable-phenotype-or-condition" class="section level2">
@@ -258,15 +259,13 @@ library(HOmics)</code></pre>
 <div id="categorigal-responses" class="section level3">
 <h3><span class="header-section-number">3.1.1</span> Categorigal responses</h3>
 <p>When response variable is categorical, a hierarchical logistic model will be performed.</p>
-<p>In such cases, some considerations need to be taken.</p>
-<p>JAGS needs a vector with 0 and 1, so it will be converted if it is not the case The rules to convert the values are the following.</p>
-<p>if it is already numerical, will be converted to a vector of 0’s and 1’s using the module 2 function denoted in R with %%</p>
+<p>JAGS needs a vector with 0 and 1, so it will be converted if it is not the case The rules to convert the values are the following: if vector it is already numerical, it will be converted to a vector of 0’s and 1’s using the module 2 function denoted in R with %%.</p>
 <pre class="r"><code>a &lt;- c(2,1,1,1,2)
 y &lt;- a %% 2
 y</code></pre>
 <pre><code>## [1] 0 1 1 1 0</code></pre>
-<p>if it is a character variable, it will be converted to a numerical factor, to be interpreted by JAGS</p>
-<p>Remember when converting to factor in R, it always assigns the levels in alphabetical order. So for instance vector a with 4 character categories, will finally converted to a numerical vector of 0’s and 1’s this way:</p>
+<p>if it is a character variable, it will be converted to a numerical factor.</p>
+<p>Remember when converting to factor in R, it assigns the levels in alphabetical order by default. So for instance vector a with 4 character categories, will finally converted to a numerical vector of 0’s and 1’s this way:</p>
 <pre class="r"><code>a &lt;- c(&quot;z&quot;,&quot;t&quot;,&quot;b&quot;,&quot;z&quot;,&quot;t&quot;,&quot;b&quot;,&quot;z&quot;)
 (a.f &lt;- as.factor(a))</code></pre>
 <pre><code>## [1] z t b z t b z
@@ -280,17 +279,47 @@ y</code></pre>
 </div>
 <div id="continuous-responses" class="section level3">
 <h3><span class="header-section-number">3.1.2</span> Continuous responses</h3>
-<p>When response variable is continuous, a hierarchical linear model will be performed.</p>
+<p>When the response variable is continuous, a hierarchical linear model will be fitted.</p>
+</div>
+<div id="covariates" class="section level3">
+<h3><span class="header-section-number">3.1.3</span> Covariates</h3>
+<p>The model accepts one or more continuous covariates. The values must be in the same sample order as <strong>cond</strong> and as the columns of <strong>data.matrix</strong>.</p>
 </div>
 </div>
+</div>
+<div id="the-model" class="section level1">
+<h1><span class="header-section-number">4</span> The model</h1>
+<p><strong>HOmics</strong> fits a Bayesian hierarchical model for each group of features as specified in the <strong>agg.matrix</strong>. The steps to fit each model are the following:</p>
+<ol style="list-style-type: decimal">
+<li>Check and prepare data</li>
+<li>Depending on the nature of the response variable <strong>cond</strong> and if covariates are included (<strong>cont.covar.matrix</strong>), a different JAGS model is defined. A hierarchical logistic model is fitted if <strong>cond</strong> is a categorical variable whereas a hierarchical linear model is fitted if response is continuous. Each model specifies the likelihood, prior and hyper prior functions and parameters. Models are stored in the /inst directory of the package</li>
+<li><em><a href="https://CRAN.R-project.org/package=rjags">rjags</a></em> is used to fit the hierarchical model with the MCMC approach</li>
+<li>The model is initially fitted with three Markov chains and default initial values</li>
+<li>The model is updated in the <em>burn in</em> phase, with 2000 iterations</li>
+<li>Coefficients (beta estimates) for all features are obtained for the posterior distribution by sampling, with 1000 iterations</li>
+<li>Function MCMCsummary of package <em><a href="https://CRAN.R-project.org/package=MCMCvis">MCMCvis</a></em> is used to obtain summaries</li>
+</ol>
+<p>Convergence has been tested in simulated data with these parameters and the three Markov chains were considerably stable.</p>
+</div>
+<div id="the-results" class="section level1">
+<h1><span class="header-section-number">5</span> The results</h1>
+<p>The output given by <strong>HOmics</strong> function is an object of class <strong>Homics</strong>. It contains a list of results for each analysis performed on each group of features.</p>
+<p>For each element in the results object, a tibble with the following columns is specified:</p>
+<ul>
+<li>mean, sd: mean and standar deviation of coefficients for all iterations in all chains (3000)</li>
+<li>2.5%, 50%, 97.5%: specified percentiles for coefficients for all iterations in all chains (3000)</li>
+<li>Rhat: Potential scale reduction statistic (Rhat). Values near 1 suggest convergence</li>
+<li>n.eff: number of effective samples for each parameter. Should the higher the better</li>
+</ul>
+<p><strong>HOmics</strong> objects can be subsequently filtered with function <strong>getsignif()</strong> to get significative features.</p>
 </div>
 <div id="example-1-synthetic-data" class="section level1">
-<h1><span class="header-section-number">4</span> Example 1: Synthetic data</h1>
+<h1><span class="header-section-number">6</span> Example 1: Synthetic data</h1>
 <p>Let’s create some random but realistic data.</p>
 <ul>
 <li>10 samples</li>
 <li>50 features</li>
-<li>8 aggregations of the 50 features</li>
+<li>8 groups of the 50 features</li>
 <li>the response is a factor of 0s and 1s having length 10</li>
 </ul>
 <pre class="r"><code>s.n &lt;- 10
@@ -320,53 +349,101 @@ cond &lt;- as.factor(y)</code></pre>
 <p>Let’s apply the function <strong>HOmics</strong>, which will fit a hierarchical logistic model.</p>
 <pre class="r"><code>library(HOmics)
 
-res &lt;- HOmics(data.matrix, agg.matrix, cond, z.matrix, cores=4)</code></pre>
+res&lt;-HOmics(data.matrix=data.matrix,
+            agg.matrix=agg.matrix,
+            cond=cond,
+            z.matrix=z.matrix,
+            cont.covar.matrix = NULL,
+            cores=4) </code></pre>
 <pre><code>## cond is a factor, it has been converted to a numerical vector of 0s and 1s to fit a hierarchical logistic model
 ##  [1] 1 0 1 0 1 0 1 0 1 0</code></pre>
 <pre class="r"><code>class(res)</code></pre>
 <pre><code>## [1] &quot;HOmics&quot;</code></pre>
-<p>Object <strong>res</strong> contains a list with a list containing each analysis result performed for each feature. It is an object of class <strong>HOmics</strong>, which can be subsequently filtered to get significative features.</p>
+<p>Object <strong>res</strong> is an object of class <strong>HOmics</strong>, which contains a list of results for each group of features.</p>
 <pre class="r"><code>res[[1]]</code></pre>
-<pre><code>## # A tibble: 28 x 10
-##    feature  mean    sd `2.5%` `50%` `97.5%`  Rhat n.eff p.pos  p.neg
-##    &lt;chr&gt;   &lt;dbl&gt; &lt;dbl&gt;  &lt;dbl&gt; &lt;dbl&gt;   &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt;  &lt;dbl&gt;
-##  1 f1      -0.14  2.76  -5.56 -0.17    7.14  1.07    60 0.461 0.539 
-##  2 f3       0.75  2.42  -4.38  0.8     5.75  1.05    83 0.653 0.347 
-##  3 f4      -0.47  2.72  -6.07 -0.49    5.77  1.17    88 0.374 0.626 
-##  4 f6      -0.26  2.59  -5.61 -0.25    5.36  1.06    86 0.445 0.555 
-##  5 f8      -0.63  1.92  -4.98 -0.47    2.78  1.05   126 0.388 0.612 
-##  6 f9      -1.1   2.3   -6.08 -1.02    3.46  1.09   100 0.265 0.735 
-##  7 f11     -1.78  2.69  -9.25 -1.28    2.09  1.11    67 0.224 0.776 
-##  8 f13      2.97  3.04  -1.36  2.52   12.3   1.18    74 0.900 0.0997
-##  9 f14      0.99  2.27  -2.81  0.72    7.03  1.09    60 0.683 0.317 
-## 10 f15     -0.44  2.17  -4.92 -0.43    4.08  1.07   171 0.393 0.607 
-## # ... with 18 more rows</code></pre>
+<pre><code>## # A tibble: 27 x 10
+##    feature  mean    sd `2.5%` `50%` `97.5%`  Rhat n.eff  p.pos p.neg
+##    &lt;chr&gt;   &lt;dbl&gt; &lt;dbl&gt;  &lt;dbl&gt; &lt;dbl&gt;   &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt;  &lt;dbl&gt; &lt;dbl&gt;
+##  1 f2       0.54  1.16  -1.49  0.47    3.03  1.06   173 0.676  0.324
+##  2 f3       0.74  1.39  -1.82  0.64    3.74  1.03   142 0.715  0.285
+##  3 f4       0.01  1.2   -2.21 -0.06    2.68  1.06   143 0.476  0.524
+##  4 f5       0.28  1.15  -2.09  0.28    2.61  1.03   169 0.621  0.379
+##  5 f6      -0.15  1.16  -2.47 -0.16    2.17  1.01   429 0.434  0.566
+##  6 f11     -0.48  1.43  -3.92 -0.39    2.18  1.05   236 0.347  0.653
+##  7 f12     -0.71  1.2   -3.42 -0.59    1.39  1.01   162 0.268  0.732
+##  8 f13      0.04  1.24  -2.56  0.05    2.71  1.01   155 0.519  0.481
+##  9 f14     -0.73  1.41  -4.06 -0.6     1.72  1.04   118 0.290  0.710
+## 10 f16     -1.83  1.38  -5.33 -1.54    0.2   1.06   113 0.0407 0.959
+## # ... with 17 more rows</code></pre>
 <p>We filter the results of those features with sigificative positive betas and significative negative betas.</p>
 <pre class="r"><code>res.f.pos &lt;- getsignif(res, param = &quot;p.pos&quot;, threshold = 0.1, as.data.frame = T)
 res.f.pos</code></pre>
-<pre><code>## # A tibble: 5 x 11
-##   group feature  mean    sd `2.5%` `50%` `97.5%`  Rhat n.eff  p.pos p.neg
-##   &lt;chr&gt; &lt;chr&gt;   &lt;dbl&gt; &lt;dbl&gt;  &lt;dbl&gt; &lt;dbl&gt;   &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt;  &lt;dbl&gt; &lt;dbl&gt;
-## 1 g1    f40     -2.72  2.17  -8.07 -2.32    0.61  1.24    76 0.0603 0.940
-## 2 g3    f30     -3.31  3.19 -12.2  -2.51    0.4   1.07    44 0.0463 0.954
-## 3 g6    f28     -2.2   2.12  -7.53 -1.8     1.04  1.02    84 0.099  0.901
-## 4 g7    f28     -3.66  3.18 -12.9  -2.82   -0.26  1.16    49 0.0193 0.981
-## 5 g8    f28     -5.26  5.29 -18.8  -3.66    1.52  1.41    90 0.0773 0.923</code></pre>
+<pre><code>## # A tibble: 13 x 11
+##    group feature  mean    sd `2.5%` `50%` `97.5%`  Rhat n.eff  p.pos p.neg
+##    &lt;chr&gt; &lt;chr&gt;   &lt;dbl&gt; &lt;dbl&gt;  &lt;dbl&gt; &lt;dbl&gt;   &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt;  &lt;dbl&gt; &lt;dbl&gt;
+##  1 g1    f16     -1.83  1.38  -5.33 -1.54   0.2    1.06   113 0.0407 0.959
+##  2 g1    f22     -1.69  1.31  -4.94 -1.57   0.76   1.05   117 0.0617 0.938
+##  3 g2    f22     -2.56  2.04  -8.67 -2.09   0.04   1.21    54 0.0293 0.971
+##  4 g3    f21     -1.75  1.68  -6.05 -1.45   0.71   1.09   110 0.096  0.904
+##  5 g3    f38     -2.22  1.77  -6.52 -1.91   0.55   1.19   137 0.0647 0.935
+##  6 g3    f46     -2.3   2.03  -7.3  -1.69   0.48   1.19    35 0.0583 0.942
+##  7 g4    f16     -3.21  3.32 -13.2  -2.27   0.41   1.32    57 0.047  0.953
+##  8 g5    f16     -3.74  4.61 -19.3  -2.16  -0.1    1.58    82 0.0183 0.982
+##  9 g6    f46     -2.5   2.17  -8.52 -2.1    0.81   1.16    29 0.0747 0.925
+## 10 g7    f16     -6.43  5.48 -20.6  -4.71  -0.1    2.15    66 0.0217 0.978
+## 11 g7    f46     -4.77  4.79 -17.6  -3.2    0.570  1.43    26 0.0493 0.951
+## 12 g8    f16     -2.49  2.45 -10.3  -1.88   0.24   1.43    73 0.041  0.959
+## 13 g8    f22     -2.53  2.08  -8.2  -1.91  -0.04   1.45    79 0.0233 0.977</code></pre>
 <pre class="r"><code>res.f.neg &lt;- getsignif(res, param = &quot;p.neg&quot;, threshold = 0.1, as.data.frame = T)
 res.f.neg</code></pre>
-<pre><code>## # A tibble: 7 x 11
+<pre><code>## # A tibble: 2 x 11
 ##   group feature  mean    sd `2.5%` `50%` `97.5%`  Rhat n.eff p.pos  p.neg
 ##   &lt;chr&gt; &lt;chr&gt;   &lt;dbl&gt; &lt;dbl&gt;  &lt;dbl&gt; &lt;dbl&gt;   &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt;  &lt;dbl&gt;
-## 1 g1    f13      2.97  3.04  -1.36  2.52   12.3   1.18    74 0.900 0.0997
-## 2 g1    f17      2.73  2.52  -1.03  2.31    9.5   1.11    54 0.918 0.0823
-## 3 g2    f13      1.94  1.54  -0.52  1.74    5.47  1.14   121 0.923 0.0767
-## 4 g2    f45      1.8   1.52  -0.64  1.56    5.58  1.1    109 0.931 0.0687
-## 5 g3    f13      2.46  2.62  -0.8   1.89    9.95  1.13   117 0.905 0.0947
-## 6 g4    f13      1.81  1.61  -0.71  1.52    5.54  1.15   150 0.911 0.0887
-## 7 g4    f23      1.89  1.47  -0.24  1.62    5.59  1.18   141 0.954 0.0457</code></pre>
+## 1 g3    f3       1.95  1.81 -0.53   1.48    6.86  1.11    54 0.938 0.0617
+## 2 g6    f3       1.9   1.67 -0.570  1.62    6.27  1.06    56 0.907 0.093</code></pre>
 </div>
-<div id="example-2-ovarian-cancer-gene-expression-and-mirna-integration" class="section level1">
-<h1><span class="header-section-number">5</span> Example 2: Ovarian cancer gene expression and miRNA integration</h1>
+<div id="example-2-synthetic-data-with-continuous-response" class="section level1">
+<h1><span class="header-section-number">7</span> Example 2: Synthetic data with continuous response</h1>
+<pre class="r"><code>cond.cont &lt;- rnorm(10,1,7)
+
+res2&lt;-HOmics(data.matrix=data.matrix,
+            agg.matrix=agg.matrix,
+            cond=cond.cont,
+            z.matrix=z.matrix,
+            cont.covar.matrix = NULL,
+            cores=4) </code></pre>
+<pre><code>## cond is a numerical vector, a hierarchical linear model will be constructed</code></pre>
+</div>
+<div id="example-3-synthetic-data-with-an-extra-continuous-covariate" class="section level1">
+<h1><span class="header-section-number">8</span> Example 3: Synthetic data with an extra continuous covariate</h1>
+<pre class="r"><code>covariate &lt;- rnorm(10,3,4)
+
+res3&lt;-HOmics(data.matrix=data.matrix,
+            agg.matrix=agg.matrix,
+            cond=cond,
+            z.matrix=z.matrix,
+            cont.covar.matrix = covariate,
+            cores=4) </code></pre>
+<pre><code>## cond is a factor, it has been converted to a numerical vector of 0s and 1s to fit a hierarchical logistic model
+##  [1] 1 0 1 0 1 0 1 0 1 0
+## cont.covar.matrix will be included in the hierarchical model, as continuous covariates</code></pre>
+</div>
+<div id="example-4-synthetic-data-with-two-extra-continuous-covariates" class="section level1">
+<h1><span class="header-section-number">9</span> Example 4: Synthetic data with two extra continuous covariates</h1>
+<pre class="r"><code>co.matrix &lt;- matrix(rnorm(20,3,4),nrow=10)
+
+res4&lt;-HOmics(data.matrix=data.matrix,
+            agg.matrix=agg.matrix,
+            cond=cond,
+            z.matrix=z.matrix,
+            cont.covar.matrix = co.matrix,
+            cores=4) </code></pre>
+<pre><code>## cond is a factor, it has been converted to a numerical vector of 0s and 1s to fit a hierarchical logistic model
+##  [1] 1 0 1 0 1 0 1 0 1 0
+## cont.covar.matrix will be included in the hierarchical model, as continuous covariates</code></pre>
+</div>
+<div id="example-5-ovarian-cancer-gene-expression-and-mirna-integration" class="section level1">
+<h1><span class="header-section-number">10</span> Example 5: Ovarian cancer gene expression and miRNA integration</h1>
 <p>For this example we will work with data from three different sources:</p>
 <ul>
 <li>ExpressionSet obtained from bicoconductor’s package <em><a href="http://bioconductor.org/packages/curatedovarianData">curatedovarianData</a></em></li>
@@ -375,44 +452,11 @@ res.f.neg</code></pre>
 </ul>
 <p>With all these information we will perform a functional approach by analyzing each gene set in mSigDB related to ovarian cancer. For all genes in a gene set, we will fit a hierarchical model where prior information known about genes are their predicted miRNAs.</p>
 <div id="data-matrix" class="section level2">
-<h2><span class="header-section-number">5.1</span> Data matrix</h2>
+<h2><span class="header-section-number">10.1</span> Data matrix</h2>
 <pre class="r"><code># BiocManager::install(&quot;curatedOvarianData&quot;)
 
-library(curatedOvarianData)</code></pre>
-<pre><code>## Loading required package: affy</code></pre>
-<pre><code>## Loading required package: BiocGenerics</code></pre>
-<pre><code>## Loading required package: parallel</code></pre>
-<pre><code>## 
-## Attaching package: 'BiocGenerics'</code></pre>
-<pre><code>## The following objects are masked from 'package:parallel':
-## 
-##     clusterApply, clusterApplyLB, clusterCall, clusterEvalQ,
-##     clusterExport, clusterMap, parApply, parCapply, parLapply,
-##     parLapplyLB, parRapply, parSapply, parSapplyLB</code></pre>
-<pre><code>## The following objects are masked from 'package:stats':
-## 
-##     IQR, mad, sd, var, xtabs</code></pre>
-<pre><code>## The following objects are masked from 'package:base':
-## 
-##     anyDuplicated, append, as.data.frame, basename, cbind, colMeans,
-##     colnames, colSums, dirname, do.call, duplicated, eval, evalq,
-##     Filter, Find, get, grep, grepl, intersect, is.unsorted, lapply,
-##     lengths, Map, mapply, match, mget, order, paste, pmax, pmax.int,
-##     pmin, pmin.int, Position, rank, rbind, Reduce, rowMeans,
-##     rownames, rowSums, sapply, setdiff, sort, table, tapply, union,
-##     unique, unsplit, which, which.max, which.min</code></pre>
-<pre><code>## Loading required package: Biobase</code></pre>
-<pre><code>## Welcome to Bioconductor
-## 
-##     Vignettes contain introductory material; view with
-##     'browseVignettes()'. To cite Bioconductor, see
-##     'citation(&quot;Biobase&quot;)', and for packages 'citation(&quot;pkgname&quot;)'.</code></pre>
-<pre><code>## 
-## Attaching package: 'Biobase'</code></pre>
-<pre><code>## The following object is masked from 'package:BiocGenerics':
-## 
-##     dims</code></pre>
-<pre class="r"><code>data(TCGA_eset)
+library(curatedOvarianData)
+data(TCGA_eset)
 TCGA_eset</code></pre>
 <pre><code>## ExpressionSet (storageMode: lockedEnvironment)
 ## assayData: 13104 features, 578 samples 
@@ -446,7 +490,7 @@ dim(expr.m) </code></pre>
 <pre class="r"><code>pheno &lt;- pData(TCGA_subset)</code></pre>
 </div>
 <div id="response-vector" class="section level2">
-<h2><span class="header-section-number">5.2</span> Response vector</h2>
+<h2><span class="header-section-number">10.2</span> Response vector</h2>
 <p>Let’s obtain the condition vector.</p>
 <pre class="r"><code>cond &lt;- pheno$sample_type
 cond</code></pre>
@@ -460,28 +504,13 @@ cond</code></pre>
 <p>Notice that this is a character categorical vector.</p>
 </div>
 <div id="aggregated-matrix" class="section level2">
-<h2><span class="header-section-number">5.3</span> Aggregated matrix</h2>
+<h2><span class="header-section-number">10.3</span> Aggregated matrix</h2>
 <p>The aggregated matrix is obtained from the MSigDB through <em><a href="https://CRAN.R-project.org/package=msigdbr">msigdbr</a></em>. To get pathawys in collection <em>curated gene sets</em> (C2) with keyword <em>ovarian</em> follow these steps:</p>
 <pre class="r"><code># install.packages(msigdbr)
 
-library(msigdbr)</code></pre>
-<pre><code>## Loading required package: dplyr</code></pre>
-<pre><code>## 
-## Attaching package: 'dplyr'</code></pre>
-<pre><code>## The following object is masked from 'package:Biobase':
-## 
-##     combine</code></pre>
-<pre><code>## The following objects are masked from 'package:BiocGenerics':
-## 
-##     combine, intersect, setdiff, union</code></pre>
-<pre><code>## The following objects are masked from 'package:stats':
-## 
-##     filter, lag</code></pre>
-<pre><code>## The following objects are masked from 'package:base':
-## 
-##     intersect, setdiff, setequal, union</code></pre>
-<pre><code>## Loading required package: tibble</code></pre>
-<pre class="r"><code>c2 = msigdbr(species = &quot;Homo sapiens&quot;, category = &quot;C2&quot;)
+library(msigdbr)
+
+c2 = msigdbr(species = &quot;Homo sapiens&quot;, category = &quot;C2&quot;)
 
 c2.ov &lt;- c2[grep(&quot;OVARIAN&quot;, c2$gs_name),]
 c2.ov</code></pre>
@@ -514,7 +543,7 @@ dim(agg.matrix)</code></pre>
 <p>14 gene sets where selected.</p>
 </div>
 <div id="prior-matrix" class="section level2">
-<h2><span class="header-section-number">5.4</span> Prior matrix</h2>
+<h2><span class="header-section-number">10.4</span> Prior matrix</h2>
 <p>The prior matrix is obtained from the downloaded information in TargetScan.</p>
 <pre class="r"><code># install.packages(&quot;readr&quot;)
 
@@ -538,9 +567,9 @@ targets</code></pre>
 ## #   end` &lt;dbl&gt;, `MSA start` &lt;dbl&gt;, `MSA end` &lt;dbl&gt;, `Seed match` &lt;chr&gt;,
 ## #   PCT &lt;chr&gt;</code></pre>
 <p>Let’s filter the targets to get only those with probability of conserved targeting (P<sub>CT</sub>) &gt;0.5 and generate the prior information matrix, i.e. the z.matrix.</p>
-<pre class="r"><code>targets.f &lt;- targets %&gt;% mutate(PCT= as.numeric(PCT)) %&gt;% filter(PCT &gt;0.5) </code></pre>
-<pre><code>## Warning: NAs introduced by coercion</code></pre>
-<pre class="r"><code>z.table &lt;- table(targets.f$`Gene Symbol`, targets.f$`miR Family`)
+<pre class="r"><code>targets.f &lt;- targets %&gt;% mutate(PCT= as.numeric(PCT)) %&gt;% filter(PCT &gt;0.5) 
+
+z.table &lt;- table(targets.f$`Gene Symbol`, targets.f$`miR Family`)
 
 z.matrix &lt;- as.matrix(as.data.frame.matrix(z.table))
 
@@ -554,7 +583,7 @@ table(z.matrix) # 0s and 1s only</code></pre>
 <pre class="r"><code>common.genes &lt;- intersect(intersect(rownames(expr.m), colnames(agg.matrix)), 
                           rownames(z.matrix))
 
-length(common.genes) #1286</code></pre>
+length(common.genes) </code></pre>
 <pre><code>## [1] 775</code></pre>
 <pre class="r"><code>agg.matrix &lt;- agg.matrix[,common.genes]
 
@@ -564,46 +593,50 @@ z.matrix &lt;- z.matrix[common.genes,]</code></pre>
 <p>And finally, we just need to decide the number of cores and apply function <strong>HOmics</strong>.</p>
 <pre class="r"><code>library(HOmics)
 
-res2 &lt;- HOmics(data.matrix = expr.m, agg.matrix  = agg.matrix, cond = cond, z.matrix = z.matrix, cores = 6)</code></pre>
+res5 &lt;- HOmics(data.matrix = expr.m, 
+               agg.matrix  = agg.matrix, 
+               cond = cond, 
+               z.matrix = z.matrix, 
+               cont.covar.matrix = NULL, 
+               cores = 6)</code></pre>
 <pre><code>## cond is a character vector, it has been converted to a numerical vector of 0s and 1s
 ##  [1] 0 0 0 1 1 1 0 1 1 1 1 0 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0
 ## [37] 0 0 0 0 0 0 0 0 0 0 0</code></pre>
-<pre class="r"><code>class(res2)</code></pre>
+<pre class="r"><code>class(res5)</code></pre>
 <pre><code>## [1] &quot;HOmics&quot;</code></pre>
-<pre class="r"><code>length(res2)</code></pre>
+<pre class="r"><code>length(res5)</code></pre>
 <pre><code>## [1] 14</code></pre>
 <p>Note that 6 cores were used in this case. For details on parallelization check section <em>Parallelization in HOmics</em>.</p>
 <p>Let’s filter the results to obtain significant results.</p>
-<pre class="r"><code>res2.f.pos &lt;- getsignif(res2, param = &quot;p.pos&quot;,threshold = 0.05, as.data.frame = T)
-res2.f.pos</code></pre>
+<pre class="r"><code>res5.f.pos &lt;- getsignif(res5, param = &quot;p.pos&quot;,threshold = 0.05, as.data.frame = T)
+res5.f.pos</code></pre>
 <pre><code>## # A tibble: 5 x 11
 ##   group      feature  mean    sd `2.5%` `50%` `97.5%`  Rhat n.eff p.pos p.neg
 ##   &lt;chr&gt;      &lt;chr&gt;   &lt;dbl&gt; &lt;dbl&gt;  &lt;dbl&gt; &lt;dbl&gt;   &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt;
-## 1 BONOME_OV~ ACOT7   -3.13  1.34  -5.83 -2.93  -1.04   1.07    12     0     1
-## 2 BONOME_OV~ EHMT2   -3.44  1.66  -7.49 -3.23  -0.85   1.67    13     0     1
-## 3 MEINHOLD_~ RAD21   -3.5   1.06  -5.83 -3.32  -2      2.93    20     0     1
-## 4 OUELLET_C~ CCNE1   -2.25  1.02  -4.78 -2.13  -0.570  1.23    67     0     1
-## 5 WAMUNYOKO~ CLIC5   -4.18  3.33 -13.0  -3.08  -0.83   1.73    27     0     1</code></pre>
-<pre class="r"><code>res2.f.neg &lt;- getsignif(res2, param = &quot;p.neg&quot;,threshold = 0.05, as.data.frame = T)
-res2.f.neg</code></pre>
-<pre><code>## # A tibble: 7 x 11
+## 1 BONOME_OV~ ACOT7   -4.65  1.73  -8.22 -4.35   -2.19  2.28    16 0     1    
+## 2 BONOME_OV~ EHMT2   -2.77  1.44  -6.8  -2.51   -0.79  1.57    21 0     1    
+## 3 MEINHOLD_~ RAD21   -3.79  1.66  -7.16 -3.28   -1.19  2.6     11 0     1    
+## 4 OUELLET_C~ CCNE1   -5.34  3.68 -14.7  -3.86   -1.18  2.89    40 0     1    
+## 5 WAMUNYOKO~ ESRP1   -2.44  1.4   -5.18 -2.37    0.17  1.09    42 0.039 0.961</code></pre>
+<pre class="r"><code>res5.f.neg &lt;- getsignif(res5, param = &quot;p.neg&quot;,threshold = 0.05, as.data.frame = T)
+res5.f.neg</code></pre>
+<pre><code>## # A tibble: 6 x 11
 ##   group     feature  mean    sd `2.5%` `50%` `97.5%`  Rhat n.eff p.pos  p.neg
 ##   &lt;chr&gt;     &lt;chr&gt;   &lt;dbl&gt; &lt;dbl&gt;  &lt;dbl&gt; &lt;dbl&gt;   &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt;  &lt;dbl&gt;
-## 1 BONOME_O~ HNRNPU   2.34  1.02   0.32  2.44    4.15  1.41    10 0.998 0.0023
-## 2 MEINHOLD~ KIF13B   1.55  0.93  -0.07  1.52    3.61  1.06    38 0.967 0.0327
-## 3 MEINHOLD~ RIMBP2   2.1   1.08   0.16  2.03    4.59  1.04    51 0.981 0.0187
-## 4 OUELLET_~ NELL2    3.37  2.48   0.35  2.74   10.4   1.84    81 0.985 0.015 
-## 5 OUELLET_~ CIRBP    2.13  0.87   0.62  2.08    3.96  2.24    18 1     0     
-## 6 OUELLET_~ GNA11    2.46  1.04   0.27  2.56    4.1   1.46    17 0.993 0.007 
-## 7 WAMUNYOK~ CAMK2N1  2.52  1.53  -0.44  2.39    5.4   1.09    56 0.958 0.0423</code></pre>
+## 1 MEINHOLD~ KIF13B   2.55  1.47   0.41  2.3     6.52  1.41    45 0.992 0.0083
+## 2 MEINHOLD~ RIMBP2   2.92  2.45  -0.65  2.35    9.91  1.81    46 0.950 0.0497
+## 3 OUELLET_~ NELL2    3.55  2.89   0.45  2.81   11.7   1.13    41 0.990 0.0097
+## 4 OUELLET_~ CIRBP    2.5   1.08   0.47  2.42    4.52  2.46    15 1     0     
+## 5 WAMUNYOK~ FLRT2    1.98  1.28  -0.65  1.86    4.54  1.04    39 0.955 0.045 
+## 6 WAMUNYOK~ NELL2    7.21  7.99  -0.25  3.95   28.9   2.05    70 0.960 0.0403</code></pre>
 </div>
 </div>
 <div id="example-3-methylation-data" class="section level1">
-<h1><span class="header-section-number">6</span> Example 3: Methylation data</h1>
+<h1><span class="header-section-number">11</span> Example 3: Methylation data</h1>
 <p>HOmics contains a specific function to analyze methylation array data. Check vignette.</p>
 </div>
 <div id="parallelization" class="section level1">
-<h1><span class="header-section-number">7</span> Parallelization</h1>
+<h1><span class="header-section-number">12</span> Parallelization</h1>
 <p>Parallelization is enabled with the use of packages <em><a href="https://CRAN.R-project.org/package=doParallel">doParallel</a></em> and <em><a href="https://CRAN.R-project.org/package=foreach">foreach</a></em>, which should work in all operative systems.</p>
 <p>To parallelize use function <em>detectCores()</em> in <em><a href="https://CRAN.R-project.org/package=parallel">parallel</a></em>to select the number of cores to work.</p>
 <pre class="r"><code>detectCores()</code></pre>
