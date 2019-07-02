@@ -4,7 +4,7 @@
 \alias{HOmics}
 \title{Integrates two omic data through hierarchical modeling}
 \usage{
-HOmics(data.matrix, agg.matrix, cond, z.matrix, cont.covar.matrix = NULL,
+HOmics(data.matrix, agg.matrix, cond, z.matrix, covar.matrix = NULL,
   seed = NULL, cores = 1, ...)
 }
 \arguments{
@@ -16,7 +16,7 @@ HOmics(data.matrix, agg.matrix, cond, z.matrix, cont.covar.matrix = NULL,
 
 \item{z.matrix}{matrix with prior information related to features, with rownames the features and columns the samples}
 
-\item{cont.covar.matrix}{vector or matrix of continuous covariates, with samples as rownames (in the same order as cond) and covariates as columns. Default = NULL}
+\item{covar.matrix}{vector or matrix of continuous covariates, with samples as rownames (in the same order as cond) and covariates as columns. Default = NULL}
 
 \item{seed}{numerical seed for the use of function set.seed in the generation of the model, for reproducibility}
 

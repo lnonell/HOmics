@@ -4,7 +4,7 @@
 #' @param agg.matrix matrix with colnames the features and rows the groups according to some feature aggregation criteria, 0 for non pertenance
 #' @param cond response variable, usually a numerical factor with two levels representing the conditions to compare. If cond is a numerical vector (continuous response), a hiearchical linear regression model will be fit instead of the default hierarchical logistic regression model
 #' @param z.matrix matrix with prior information related to features, with rownames the features and columns the samples
-#' @param cont.covar.matrix vector or matrix of continuous covariates, with samples as rownames (in the same order as cond) and covariates as columns. Default = NULL
+#' @param covar.matrix vector or matrix of continuous covariates, with samples as rownames (in the same order as cond) and covariates as columns. Default = NULL
 #' @param seed numerical seed for the use of function set.seed in the generation of the model, for reproducibility
 #' @param cores cores in case of parallelization. Default = 1 (no parallelization)
 
@@ -20,7 +20,7 @@
 #' @export HOmics
 
 
-HOmics <- function(data.matrix, agg.matrix, cond, z.matrix, cont.covar.matrix = NULL, seed=NULL, cores=1, ...)
+HOmics <- function(data.matrix, agg.matrix, cond, z.matrix, covar.matrix = NULL, seed=NULL, cores=1, ...)
 {
   
  # source(file="D:/Doctorat/Hierarchical/Package/HOmics/R/hmodel.R")
@@ -60,25 +60,21 @@ HOmics <- function(data.matrix, agg.matrix, cond, z.matrix, cont.covar.matrix = 
   #############################
   if (is.factor(cond)) {
     
-    if (nlevels(cond) < 2) stop(paste0("cond is a factor but must contain at least 2 levels" )) 
+    if (nlevels(cond) != 2 ) {
+      
+      stop(paste0("cond is a factor but must contain 2 levels" )) 
     
-    else if (nlevels(cond) > 2) {
-      
-      cat(paste0("cond is a factor and contains more than three levels, it has been converted to a numerical vector of 0s and 1s\n" ))
-      cond <- as.numeric(cond) %% 2
-      print(cond)
-      
     } else {
-      
-      cat(paste0("cond is a factor, it has been converted to a numerical vector of 0s and 1s to fit a hierarchical logistic model\n" ))
-      cond <- as.numeric(cond) %% 2
+      cond.min <- levels(cond)[1]
+      cat(paste0("cond is a factor, it has been converted to a numerical vector of 0s and 1s with ",cond.min," as the reference level. A hierarchical logistic model will be fitted\n" ))
+      cond <- as.numeric(cond)-1
       print(cond)
       
     }
   } else if (is.character(cond)) {
-    
-    cat(paste0("cond is a character vector, it has been converted to a numerical vector of 0s and 1s\n" ))
-    cond <- as.numeric(as.factor(cond)) %% 2
+    cond.min <- min(cond)
+    cat(paste0("cond is a factor, it has been converted to a numerical vector of 0s and 1s with ",cond.min," as the reference level. A hierarchical logistic model will be fitted\n" ))
+    cond <- as.numeric(as.factor(cond)) -1
     print(cond)
     
   } else if (is.numeric(cond)) {
@@ -93,15 +89,25 @@ HOmics <- function(data.matrix, agg.matrix, cond, z.matrix, cont.covar.matrix = 
   #######  Covariates  ########
   #############################
   #only continuous for the moment
-  if(!is.null(cont.covar.matrix)){
-    if (is.vector(cont.covar.matrix)){
-      if (length(cont.covar.matrix) != length(cond) | !is.numeric(cont.covar.matrix))
-       stop("cont.covar.matrix is a vector but must be continuous and have the same length as cond")
-    } else if (nrow(cont.covar.matrix)!= length(cond) | !is.numeric(cont.covar.matrix)) 
-      stop("cont.covar.matrix is a matrix but must be continuous and have the same number of rows as length of cond")
-  cat(paste0("cont.covar.matrix will be included in the hierarchical model, as continuous covariates\n" ))
-  } 
+  if(!is.null(covar.matrix)){
     
+    if (is.vector(covar.matrix)){
+      
+      if (length(covar.matrix) != length(cond))   stop("covar.matrix is a vector but must have the same length as cond")
+      
+      else if(is.factor(covar.matrix) | is.character(covar.matrix)) {
+        
+        covar.matrix <- as.numeric(as.factor(covar.matrix)) -1
+        cat(paste0("covar.matrix has been converted to a numerical vector\n" ))
+        
+     } else cat("covar.matrix will be included in the hierarchical model, as a continuous covariate\n") 
+        
+  } else if (nrow(covar.matrix)!= length(cond) | !is.numeric(covar.matrix)) 
+      
+      stop("covar.matrix is a matrix but must be continuous and have the same number of rows as length of cond")
+    
+  } else if (is.numeric(covar.matrix)) cat(paste0("covar.matrix will be included in the hierarchical model, as continuous covariates\n" ))
+  
  
   #############################
   ############ Cores ##########
@@ -127,7 +133,7 @@ HOmics <- function(data.matrix, agg.matrix, cond, z.matrix, cont.covar.matrix = 
            z.matrix = z.mat,
            cond = cond, 
            cont = cont, 
-           covar.matrix = cont.covar.matrix, 
+           covar.matrix = covar.matrix, 
            seed = seed)  
   }
   stopCluster(cl)

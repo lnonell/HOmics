@@ -19,9 +19,11 @@ Imports:
     minfi,
     rjags,
     dplyr,
-    purrr
+    purrr,
+    ggplot2
 Collate: 
     'hmodel.R'
     'HOmics.R'
     'HOmics.meth.R'
-    'getsignif.R'
+    'get.signif.R'
+    'plot.res.R'
