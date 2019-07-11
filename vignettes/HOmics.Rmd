@@ -63,32 +63,43 @@ Convergence has been tested in simulated data with these parameters and the thre
 # Data
 
 
-As previously statted, **HOmics** fits a Bayesian hierarchical model for each group of features as specified in the **agg.matrix** (each group in a row). Figure 1 summarizes the relationship among the different needed objects in the model hierarchy.
+As previously stated, **HOmics** fits a Bayesian hierarchical model for a group of features. For that the **agg.matrix** is needed. 
+
+Input data parameters for main function **HOmics** are the following:
+
+- **data.matrix**: measurements of *m* features in *n* samples. Matrix with features as rows and samples as columns. It can be for instance a gene expression matrix or a matrix of CpGs beta-values.
+- **agg.matrix**: aggregation matrix for features. Each row represents a group. It must contain features as columns and the aggregation criteria as rows. If a feature belongs to a group in its corresponding row and columns position should be a 1, if not a 0. A model will be fitted with the selected features in each row by selecting those with 1s. It can be for instance a matrix of genes belonging to functions or genes close to CpGs. 
+- **cond**: condition, response or phenotype variable. Usually a numerical factor with two levels representing the conditions to compare although it can be a continuous vector too. If **cond** is numerical (continuous response), a hiearchical linear regression model will be fitted instead of the default hierarchical logistic regression model. Details on this parameter are to be found below.
+- **z.matrix**: matrix with prior information related to features, with rownames the features and columns the samples. It can be the miRNAs targeting genes specified in the data.matrix.
+- **covar.matrix** (optional): vector with a covariate or matrix of continuous covariates, with samples as rownames (in the same order as cond) and covariates as columns. Default = NULL.
+- **cores** (optional): cores in case of parallelization. Default = 1 (no parallelization).
+
+Figure 1 summarizes the relationship among the different needed objects in the model hierarchy.
 
 
 ```{r fig1, out.width = "90%", echo = FALSE}
 knitr::include_graphics("Fig1.jpg")
 ```
 
-Input data parameters for main function **HOmics** are the following:
-
-- **data.matrix**: measurements of *m* features in *n* samples. Matrix with features as rows and samples as columns. It can be for instance a gene expression matrix or a matrix of CpGs beta-values.
-- **agg.matrix**: aggregation matrix for features. This will be used to select the features to fit the model with. A model will be fitted with the selected features in a row (with value 1). It must contain features as rows and the aggregation criteria as columns. It can be for instance a matrix of genes belonging to functions or genes close to CpGs. 
-- **cond**: condition, response or phenotype variable. Usually a numerical factor with two levels representing the conditions to compare although it can be a continuous vector too. If **cond** is numerical (continuous response), a hiearchical linear regression model will be fitted instead of the default hierarchical logistic regression model. Details on this parameter are to be found below.
-- **z.matrix**: matrix with prior information related to features, with rownames the features and columns the samples. 
-- **covar.matrix** (optional): vector with a covariate or matrix of continuous covariates, with samples as rownames (in the same order as cond) and covariates as columns. Default = NULL.
-- **cores** (optional): cores in case of parallelization. Default = 1 (no parallelization).
-
 
 ## Response variable, phenotype or condition
 
 **cond** is the response variable and should be a vector with the same length and order as samples in **data.matrix**  (specified as columns).
-Response variable can be continuous or categorical but depending on its nature it will be transformed. **HOmics** will fit a hierarchical logistic regression model when the response is binary or a hierarchical linear regression model if the response is continuous.
+Response variable can be continuous or categorical but depending on its nature it will be transformed to fit the hiearachical model.
+
+**HOmics** will fit a hierarchical logistic regression model when the response is binary or a hierarchical linear regression model if the response is continuous.
 
 ### Categorigal responses
 
-JAGS needs a vector with 0 and 1, so vector **cond** will be converted if it is not such a vector.
-The rules to convert it are the following: if **cond** is a factor, it will be converted to a vector of 0's and 1's by doing
+JAGS needs a vector of 0s and 1s, so vector **cond** will be converted if it is not such.
+The rules to convert it are the following: 
+
+- if **cond** is a factor, it will be converted to a vector of 0's and 1's. Remember when converting to factor in R, it assigns the levels in alphabetical order by default. So for instance, in the following code, for vector *a*, 2 will be taken as the level of reference. In this case, we would compare 4 vs 2. For vector *b*, **HOmics** will use "healthy" as the reference level and the comparison performed will be "tumor" vs "healthy". 
+You can use function *relevel()* to select a different reference level.
+
+- if **cond** is a character variable, it will be converted to a numerical vector by converting it first to a factor.
+
+This is the internal code used to transform the variable:
 
 ```{r cond1}
 
@@ -107,10 +118,6 @@ cond.b
 
 ```
 
-Remember when converting to factor in R, it assigns the levels in alphabetical order by default. So for instance, in vector *a*, 2 will be taken as the level of reference. In this case, we would compare 4 vs 2. For vector *b*, **HOmics** will use "healthy" as the reference level and the comparison performed will be "tumor" vs "healthy". 
-You can use function *relevel()* to select a different reference level.
-
-In case **cond** is a character variable, it will be converted to a numerical vector by converting it first to a factor.
 
 ### Continuous responses
 
@@ -118,7 +125,7 @@ When the response variable is continuous, a hierarchical linear model will be fi
 
 ## Covariates
 
-The model accepts one or more covariates in parameter **covar.matrix**. The values must be in the same sample order as **cond** and as the columns of **data.matrix**.
+The model accepts one or more covariates in parameter **covar.matrix**. **covar.matrix** can be a vector or a matrix but in both cases the values must be in the same sample order as **cond** and as the columns of **data.matrix**.
 
 
 # Parallelization
@@ -139,14 +146,14 @@ detectCores()
 
 The output given by **HOmics** function is an object of class **Homics**. It contains a list of results for each analysis performed on each group of features. 
 
-For each element in the results object, a tibble with the following columns is specified:
+For each element in the results object, a tibble, with the following columns is specified:
 
 - mean, sd: mean and standar deviation of coefficients for all iterations in all chains (3000)
 - 2.5%, 50%, 97.5%: specified percentiles for coefficients for all iterations in all chains (3000)
 - Rhat: Potential scale reduction statistic (Rhat). Values near 1 suggest convergence
 - n.eff: number of effective samples for each parameter. Should the higher the better
 
-**HOmics** objects can be subsequently filtered with function **get.signif()** to get significative features.
+**HOmics** objects can be subsequently filtered with function **get.signif()** to get significative features or plotted with function **plot.res()**.
 
 
 # Example 1: Synthetic data
@@ -167,17 +174,17 @@ z.n <- 10
 g.n <- 8
 
 #data.matrix, features with random normal distribution
-data.matrix<-matrix(data=rnorm(500,5,3),nrow=f.n)
+data.matrix<-matrix(data = rnorm(500,5,3),nrow=f.n)
 rownames(data.matrix) <- paste0("f",1:f.n)
 colnames(data.matrix) <- paste0("s",1:s.n)
 
 #aggregation of features g a
-agg.matrix <- matrix(data=sample(rep(0:1,1000),400),nrow=g.n)
+agg.matrix <- matrix(data = sample(rep(0:1,1000),400),nrow=g.n)
 rownames(agg.matrix) <- paste0("g",1:g.n)
 colnames(agg.matrix) <- paste0("f",1:f.n)
 
 #prior matrix of features  belonging to z's
-z.matrix<-matrix(data=sample(rep(0:1,1000),500),nrow=f.n)
+z.matrix<-matrix(data = sample(rep(0:1,1000),500),nrow=f.n)
 rownames(z.matrix) <- paste0("f",1:f.n)
 colnames(z.matrix) <- paste0("z",1:z.n)
 
@@ -188,17 +195,18 @@ cond <- as.factor(y)
 ```
 
 Let's apply the function **HOmics**, which will fit a hierarchical logistic model.
+As there are 8 groups specified in the agg.matrix, HOmics will fit 8 hierarchical models and return a list with 8 elements with the results.
 
 ```{r model}
 
 library(HOmics)
 
-res<-HOmics(data.matrix=data.matrix,
-            agg.matrix=agg.matrix,
-            cond=cond,
-            z.matrix=z.matrix,
+res<-HOmics(data.matrix = data.matrix,
+            agg.matrix = agg.matrix,
+            cond = cond,
+            z.matrix =z.matrix,
             covar.matrix = NULL,
-            cores=4) 
+            cores = 4) 
 class(res)
 
 ```
@@ -227,7 +235,7 @@ we finally plot 95% probability for the first model
 
 ```{r plot_res}
 
-plot.res(res, element="g1")
+plot.res(res, element = "g1")
 
 ```
 
@@ -239,12 +247,12 @@ plot.res(res, element="g1")
 
 cond.cont <- rnorm(10,1,7)
 
-res2<-HOmics(data.matrix=data.matrix,
-            agg.matrix=agg.matrix,
-            cond=cond.cont,
-            z.matrix=z.matrix,
+res2<-HOmics(data.matrix = data.matrix,
+            agg.matrix = agg.matrix,
+            cond = cond.cont,
+            z.matrix = z.matrix,
             covar.matrix = NULL,
-            cores=4) 
+            cores = 4) 
 
 ```
 
@@ -254,12 +262,12 @@ res2<-HOmics(data.matrix=data.matrix,
 
 covar<- rep(c("A","B"),5)
 
-res3<-HOmics(data.matrix=data.matrix,
-            agg.matrix=agg.matrix,
-            cond=cond,
-            z.matrix=z.matrix,
+res3<-HOmics(data.matrix = data.matrix,
+            agg.matrix = agg.matrix,
+            cond = cond,
+            z.matrix = z.matrix,
             covar.matrix = covar,
-            cores=4) 
+            cores = 4) 
 
 ```
 
@@ -269,12 +277,12 @@ res3<-HOmics(data.matrix=data.matrix,
 
 covariate <- rnorm(10,3,4)
 
-res4<-HOmics(data.matrix=data.matrix,
-            agg.matrix=agg.matrix,
-            cond=cond,
-            z.matrix=z.matrix,
+res4<-HOmics(data.matrix = data.matrix,
+            agg.matrix = agg.matrix,
+            cond = cond,
+            z.matrix = z.matrix,
             covar.matrix = covariate,
-            cores=4) 
+            cores = 4) 
 
 ```
 
@@ -285,12 +293,12 @@ res4<-HOmics(data.matrix=data.matrix,
 
 co.matrix <- matrix(rnorm(20,3,4),nrow=10)
 
-res4<-HOmics(data.matrix=data.matrix,
-            agg.matrix=agg.matrix,
-            cond=cond,
-            z.matrix=z.matrix,
+res4<-HOmics(data.matrix = data.matrix,
+            agg.matrix = agg.matrix,
+            cond = cond,
+            z.matrix = z.matrix,
             covar.matrix = co.matrix,
-            cores=4) 
+            cores = 4) 
 
 ```
 
@@ -347,8 +355,8 @@ Notice that this is a character categorical vector.
 
 ## Aggregated matrix
 
-The aggregated matrix is obtained from the MSigDB through `r CRANpkg("msigdbr")`.
-To get pathawys in collection *curated gene sets* (C2) with keyword *ovarian* follow these steps:
+The aggregated matrix must contain the groups that will be analyzed, in this case each functional gene set is a group and will be specified in a row. Information is obtained from the MSigDB through `r CRANpkg("msigdbr")` and then the **agg.matrix** is constructed.
+To get pathways in collection *curated gene sets* (C2) with keyword *ovarian* follow these steps:
 
 ```{r msigdb}
 # install.packages(msigdbr)
@@ -380,7 +388,7 @@ table(agg.matrix)  # 0s and 1s only
 
 ## Prior matrix
 
-The prior matrix is obtained from the downloaded information in TargetScan.
+The prior matrix with miRNAs that target our set of genes is obtained from the downloaded information obtained at TargetScan.
 
 ```{r mirnas}
 # install.packages("readr")
@@ -391,7 +399,7 @@ targets
 
 ```
 
-Let's filter the targets to get only those with probability of conserved targeting (P<sub>CT</sub>) >0.5 and generate the prior information matrix, i.e. the z.matrix.
+Let's filter the targets to get only those with probability of conserved targeting (P<sub>CT</sub>) > 0.5 and generate the prior information matrix, i.e. **the z.matrix**.
 
 ```{r mirnas_filter}
 
@@ -445,7 +453,7 @@ length(res6)
 
 Note that 6 cores were used in this case.
 
-Let's filter the results to obtain high probabiliy results.
+Let's filter the results to obtain high probabiliy results (p > 0.95).
 
 
 ```{r filter6}
