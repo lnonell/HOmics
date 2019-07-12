@@ -7,8 +7,8 @@
 HOmics.meth(meth.data = GRSet, pheno.cond.col = "tissue.ch1",
   annot.gene.col = "UCSC_RefGene_Name",
   annot.z.col = c("UCSC_RefGene_Group"), annot.mult.sep = ";",
-  z.matrix = NULL, gene.list = genes.u, pheno.covar.col = NULL,
-  cores = 1, ...)
+  z.matrix = NULL, pheno.covar.col = NULL, gene.list = genes.u,
+  seed = NULL, cores = 1, ...)
 }
 \arguments{
 \item{meth.data}{GenomicRatioSet or  ExpressionSet with methylation data}
@@ -23,9 +23,11 @@ HOmics.meth(meth.data = GRSet, pheno.cond.col = "tissue.ch1",
 
 \item{z.matrix}{prior information. Alternative parameter to annot.z.col as matrix with rows the featureNames of meth.data and columns the Zvars can be given. Default = NULL}
 
+\item{pheno.covar.col}{covariates, column of annotation that contains names of covariates to include in the model (one or more of the variable names contained in pheno data). Default = NULL}
+
 \item{gene.list}{genes to analyze as a vector with symbols (HUGO)}
 
-\item{pheno.covar.col}{covariates, column of annotation that contains names of covariates to include in the model (one or more of the variable names contained in pheno data). Default = NULL}
+\item{seed}{numerical seed for the use of function set.seed in the generation of the model, for reproducibility}
 
 \item{cores}{cores in case of parallelization. Default = 1 (no parallelization)}
 }

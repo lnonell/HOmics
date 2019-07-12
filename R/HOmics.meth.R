@@ -2,12 +2,13 @@
 #'
 #' @param meth.data GenomicRatioSet or  ExpressionSet with methylation data
 #' @param pheno.cond.col response variable, column of annotation that contains condition (one of the variable names contained in pheno data obtained with function pData())
-#' @param pheno.covar.col covariates, column of annotation that contains names of covariates to include in the model (one or more of the variable names contained in pheno data). Default = NULL
 #' @param annot.gene.col column of annotation that contains gene names (same annotations as gene.list). Default = "UCSC_RefGene_Name"
 #' @param annot.z.col prior information. Column of annotation that contains prior variable (for GenomicRatioSet functions getAnnotation() or fData() for ExpressionSet). Default = "UCSC_RefGene_Group"
 #' @param annot.mult.sep separator for annot.gene.col and maybe annot.z.col multiple values. Default = ";"
 #' @param z.matrix prior information. Alternative parameter to annot.z.col as matrix with rows the featureNames of meth.data and columns the Zvars can be given. Default = NULL
+#' @param pheno.covar.col covariates, column of annotation that contains names of covariates to include in the model (one or more of the variable names contained in pheno data). Default = NULL
 #' @param gene.list genes to analyze as a vector with symbols (HUGO)
+#' @param seed numerical seed for the use of function set.seed in the generation of the model, for reproducibility
 #' @param cores cores in case of parallelization. Default = 1 (no parallelization)
 
 #' @import dplyr
@@ -25,13 +26,13 @@
 
 
 HOmics.meth <- function(meth.data = GRSet, pheno.cond.col="tissue.ch1", annot.gene.col = "UCSC_RefGene_Name",
-                      annot.z.col = c("UCSC_RefGene_Group"), annot.mult.sep = ";", z.matrix = NULL, gene.list = genes.u,
-                      pheno.covar.col = NULL, cores = 1,
+                      annot.z.col = c("UCSC_RefGene_Group"), annot.mult.sep = ";", z.matrix = NULL, pheno.covar.col = NULL, 
+                      gene.list = genes.u, seed=NULL, cores = 1,
                       ...)
 {
   
   cont = FALSE
-  covar = FALSE
+  
   #########################
   ##Argument checking #####
   #########################
@@ -55,7 +56,7 @@ HOmics.meth <- function(meth.data = GRSet, pheno.cond.col="tissue.ch1", annot.ge
     pheno.data <- as_tibble(pheno.data)
     
     annot.data <- fData(meth.data)
-    annot.data$cpg <- rownames(annot.data) #AKI: CANVIAR CPG
+    annot.data$cpg <- rownames(annot.data) 
     annot.data <- as_tibble(annot.data)
     
     cpg.data <- exprs(meth.data)
@@ -98,25 +99,21 @@ HOmics.meth <- function(meth.data = GRSet, pheno.cond.col="tissue.ch1", annot.ge
   
   if (is.factor(cond.v)) {
     
-    if (nlevels(cond.v) < 2) stop(paste0("vector ", pheno.cond.col, " is a factor but must contain at least 2 levels" )) 
-    
-    else if (nlevels(cond.v) > 2) {
+    if (nlevels(cond.v) != 2 ) {
       
-      cat(paste0(pheno.cond.col," is a factor and contains more than three levels, it has been converted to a numerical vector of 0s and 1s\n" ))
-      cond <- as.numeric(cond.v) %% 2
-      print(cond)
+      stop(paste0("vector ", pheno.cond.col, " is a factor but must have 2 levels" )) 
       
     } else {
-      
-      cat(paste0(pheno.cond.col," cond is a factor, it has been converted to a numerical vector of 0s and 1s to fit a hierarchical logistic model\n" ))
-      cond <- as.numeric(cond.v) %% 2
+      cond.min <- levels(cond.v)[1]
+      cat(paste0(pheno.cond.col," is a factor, it has been converted to a numerical vector of 0s and 1s with ",cond.min," as the reference level. A hierarchical logistic model will be fitted\n" ))
+      cond <- as.numeric(cond.v)-1
       print(cond)
       
     }
   } else if (is.character(cond.v)) {
-    
-    cat(paste0(pheno.cond.col," is a character vector, it has been converted to a numerical vector of 0s and 1s\n" ))
-    cond <- as.numeric(as.factor(cond.v)) %% 2
+    cond.min <- min(cond.v)
+    cat(paste0(pheno.cond.col," is a factor, it has been converted to a numerical vector of 0s and 1s with ",cond.min," as the reference level. A hierarchical logistic model will be fitted\n" ))
+    cond <- as.numeric(as.factor(cond.v)) -1
     print(cond)
     
   } else if (is.numeric(cond.v)) {
@@ -126,13 +123,27 @@ HOmics.meth <- function(meth.data = GRSet, pheno.cond.col="tissue.ch1", annot.ge
     cont <- TRUE
     
   } else stop ("Unrecognized type of condition")  
+ 
 
   rm(cond.v)
   #########################
   ## Covariates  ####
   #########################
   #flag covar
-  #if (!is.null(pheno.covar.col)) 
+  if (!is.null(pheno.covar.col)){
+    
+    if (!(pheno.covar.col %in% colnames(pheno.data))) stop("covariate ", pheno.covar.col, " should be a variable in phenoData slot") 
+    else   covar.v <- pheno.data %>% select (!!as.name(pheno.covar.col)) %>% pull()
+    
+    if(is.factor(covar.v) | is.character(covar.v)) {
+      
+      covar.v <- as.numeric(as.factor(covar.v)) -1
+      cat(paste0("covariate ", pheno.covar.col, " has been converted to a numerical vector\n" ))
+      
+    } else cat(paste0("covariate ", pheno.covar.col, " will be included in the hierarchical model, as a continuous covariate\n")) 
+    
+  } else covar.v=NULL
+    
   
   #########################
   #######  Cores  #########
@@ -190,7 +201,12 @@ cpg.models<- foreach(i=1:N,.packages=c("rjags","tidyverse","MCMCvis"),.export="h
           z.mat<-as.data.frame(select(z.n,-cpg)) 
           rownames(z.mat) <- cpgs
           g.matrix <- cpg.data[cpgs,] 
-          hmodel(g.matrix,z.mat,cond,cont=cont) #function that performs model
+          hmodel(g.matrix = g.matrix, 
+                 z.matrix = z.mat,
+                 cond = cond, 
+                 cont = cont, 
+                 covar.matrix = covar.v, 
+                 seed = seed)  
         }
       }  
     } else {

@@ -17,11 +17,11 @@ knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
 # Introduction
 
 **HOmics** is an R package to integrate omics data by capturing hierarchical relations between omics in their association to phenotype. 
-It contains two main functions, the generic **HOmics()** function and **HOmics.meth()**, to analyze specifically methylation of genes affecting a phenotype. Details on how to apply this latter function are available in the [HOmics methylation in genes integration](HOmics methylation in genes integration.html) vignette.
+It contains two main functions, the generic **HOmics()** function and **HOmics.meth()**, to analyze specifically methylation of genes affecting a phenotype. Details on how to apply this latter function are available in the [HOmics methylation gene integration vignette](HOmics_methylation_gene_integration.html).
 
 # Installation
 
-HOmics fits Bayesian models through the package `r CRANpkg("rjags")`, which needs the JAGS (Just Another Gibbs Sampler) environment to be installed. JAGS is a program for the analysis of Bayesian hierarchical models using Markov Chain Monte Carlo (MCMC) simulation.
+**HOmics** fits Bayesian models through the package `r CRANpkg("rjags")`, which needs the JAGS (Just Another Gibbs Sampler) environment to be installed. JAGS is a program for the analysis of Bayesian hierarchical models using Markov Chain Monte Carlo (MCMC) simulation.
 You can install JAGS easily through this link: [http://mcmc-jags.sourceforge.net/](http://mcmc-jags.sourceforge.net/)
 Once JAGS is installed you only need to install the **HOmics** package:
 
@@ -70,7 +70,7 @@ Input data parameters for main function **HOmics** are the following:
 - **data.matrix**: measurements of *m* features in *n* samples. Matrix with features as rows and samples as columns. It can be for instance a gene expression matrix or a matrix of CpGs beta-values.
 - **agg.matrix**: aggregation matrix for features. Each row represents a group. It must contain features as columns and the aggregation criteria as rows. If a feature belongs to a group in its corresponding row and columns position should be a 1, if not a 0. A model will be fitted with the selected features in each row by selecting those with 1s. It can be for instance a matrix of genes belonging to functions or genes close to CpGs. 
 - **cond**: condition, response or phenotype variable. Usually a numerical factor with two levels representing the conditions to compare although it can be a continuous vector too. If **cond** is numerical (continuous response), a hiearchical linear regression model will be fitted instead of the default hierarchical logistic regression model. Details on this parameter are to be found below.
-- **z.matrix**: matrix with prior information related to features, with rownames the features and columns the samples. It can be the miRNAs targeting genes specified in the data.matrix.
+- **z.matrix**: matrix with prior information related to features, with rownames the features and prior entities. It can be the miRNAs targeting genes specified in the data.matrix.
 - **covar.matrix** (optional): vector with a covariate or matrix of continuous covariates, with samples as rownames (in the same order as cond) and covariates as columns. Default = NULL.
 - **cores** (optional): cores in case of parallelization. Default = 1 (no parallelization).
 
@@ -231,7 +231,7 @@ res.f.neg
 
 ```
 
-we finally plot 95% probability for the first model
+We finally plot 95% probability for the first model.
 
 ```{r plot_res}
 

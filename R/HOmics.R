@@ -1,7 +1,7 @@
 #' Integrates two omic data through hierarchical modeling
 #'
 #' @param data.matrix matrix with features as rownames and samples as columns
-#' @param agg.matrix matrix with colnames the features and rows the groups according to some feature aggregation criteria, 0 for non pertenance
+#' @param agg.matrix matrix with features as rownames and columns corresponding to the groups, according to some feature aggregation criteria, 0 for non pertenance
 #' @param cond response variable, usually a numerical factor with two levels representing the conditions to compare. If cond is a numerical vector (continuous response), a hiearchical linear regression model will be fit instead of the default hierarchical logistic regression model
 #' @param z.matrix matrix with prior information related to features, with rownames the features and columns the samples
 #' @param covar.matrix vector or matrix of continuous covariates, with samples as rownames (in the same order as cond) and covariates as columns. Default = NULL
@@ -22,8 +22,6 @@
 
 HOmics <- function(data.matrix, agg.matrix, cond, z.matrix, covar.matrix = NULL, seed=NULL, cores=1, ...)
 {
-  
- # source(file="D:/Doctorat/Hierarchical/Package/HOmics/R/hmodel.R")
   
   call<-match.call() #to be returned at the end
   
@@ -62,7 +60,7 @@ HOmics <- function(data.matrix, agg.matrix, cond, z.matrix, covar.matrix = NULL,
     
     if (nlevels(cond) != 2 ) {
       
-      stop(paste0("cond is a factor but must contain 2 levels" )) 
+      stop(paste0("cond is a factor but must have 2 levels" )) 
     
     } else {
       cond.min <- levels(cond)[1]
