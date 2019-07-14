@@ -1,0 +1,211 @@
+---
+title: "HOmics methylation gene integration vignette"
+author: "Lara Nonell"
+date: "`r format(Sys.time(), '%d %b %Y')`"
+output: 
+  BiocStyle::html_document:
+    number_sections: true
+    toc_float: yes
+---
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+
+```
+
+# Introduction
+
+**HOmics** is an R package to integrate omics data by capturing hierarchical relations between omics in their association to phenotype. 
+It contains two main functions, the generic **HOmics()** function and **HOmics.meth()**, to analyze specifically methylation of genes affecting a phenotype. Details on the model and how to apply the generic function are available in the [HOmics vignette](HOmics.html).
+
+
+# Installation
+
+**HOmics** fits Bayesian models through the package `r CRANpkg("rjags")`, which needs the JAGS (Just Another Gibbs Sampler) environment to be installed. JAGS is a program for the analysis of Bayesian hierarchical models using Markov Chain Monte Carlo (MCMC) simulation.
+You can install JAGS easily through this link: [http://mcmc-jags.sourceforge.net/](http://mcmc-jags.sourceforge.net/)
+Once JAGS is installed you only need to install the **HOmics** package:
+
+```{r HOmics}
+
+# library(devtools)
+# install_github("lnonell/HOmics")
+
+library(HOmics)
+
+```
+
+HOmics depends on the following R packages:
+
+- Biobase
+- doParallel
+- foreach
+- minfi
+- rjags
+- MCMCvis
+- dplyr
+- purrr
+- ggplot2
+
+
+# Model and data
+
+
+**HOmics.meth()** function permits the association analysis of methylation beta-values of CpGs in genes considering prior information.  The association is performed through the fitting of a hierarchical model, where this extra prior information added to the model, adjusting regression coefficients.
+
+**HOmics.meth()** takes advantage of standard Bioconductor classes. The function is prepared to process ExpressionSet (BioC) or GenomicRatioSet (minfi), standard classes when downloading data using the GEOquery package. These objects have the following components:
+
+- phenoData: information about the variables to analyze phenotype and covariate (accessible with function *pData()*)
+- annotation Data: featureData for an ExpressionSet  (accessible with function *fData()*) object or annotation for a GenomicRatioSet (accessible with function *getAnnotation()*)
+
+The best way to know whether **HOmics.meth()** fits to your data is to test the corresponding functions to see that everything is OK. If not, use the generic function **HOmics()** ([HOmics vignette](HOmics.html)).
+
+Regarding the prior information, **HOmics.meth()** default parameters are set to perform an analysis with prior information corresponding to the relative position of CpGs to the gene (**annot.gene.col**="UCSC_RefGene_Name", **annot.z.col**="UCSC_RefGene_Group" and **annot.mult.sep**=";", which defines the separator in the **annot.gene.cols** and **annot.z.cols**).
+
+Options for the relative position of a CpG to the closest gene are:
+
+- 3'UTR
+- TSS1500
+- TSS200
+- Body
+- 5'UTR
+
+To apply other kind of prior knowledge, use **z.matrix** parameter to set the matrix with prior information.
+
+**HOmics.meth()** needs several parameters:
+
+- **meth.data**: GenomicRatioSet or  ExpressionSet containing methylation information as well as annotations on gene position
+- **pheno.cond.col**: response variable, name of column of pheno data that contains condition (one of the variable names contained in phenoData obtained with function pData())
+- **annot.gene.col**: column of annotation that contains gene names (same annotations as gene.list). Default = "UCSC_RefGene_Name"
+- **annot.z.col**: prior information. Column of annotation that contains prior variable (for GenomicRatioSet functions getAnnotation() or fData() for ExpressionSet). Default = "UCSC_RefGene_Group"
+- **annot.mult.sep**: separator for annot.gene.col and maybe annot.z.col multiple values. Default = ";"
+- **z.matrix**: prior information. Alternative parameter to annot.z.col as matrix with rows the featureNames of meth.data and columns the prior information entities. Default = NULL
+- **pheno.covar.col**: covariate, column of annotation that contains name of covariate to include in the model (one of the variable names contained in pheno data). Default = NULL
+- **gene.list**: genes to analyze as a vector with symbols (HUGO nomenclature)
+- **cores**: cores in case of parallelization. Default = 1 (no parallelization)
+
+ 
+Note that GEO data from Illumina methylation array 27k (GEO platform GPL8490) and 450K (GEO platform GPL13534) contain two fields UCSC_RefGene_Name and UCSC_RefGene_Group but EPIC (GEO platform GPL21145) does not contain such information. Annotation files for those objects should be added manually.
+
+## Response variable, phenotype or condition
+
+pheno.cond.col should be a variable  in the annotation data  associated to the meth.data object, usually a column in pData(meth.data)
+
+Response variable can be continuous or categorical. Refer to the [HOmics vignette](HOmics.html) for detailed description on how the condition variable is treated during the analysis.
+
+## Covariates
+
+The model accepts one covariate in parameter **pheno.covar.col**. **pheno.covar.col**. This should be a name of column of pheno data that contains the covariate (one of the variable names contained in phenoData obtained with function pData()).
+
+
+# Example 1: Methylation ExpressionSet from GEO 
+
+ExpressionSet corresponds to GEO accession number GSE117929. Data was previously downloaded using package `r Biocpkg("GEOquery")` and accessible as data object in **HOmics**. `r Biocpkg("Biobase")` package is needed to manipulate ExpressionSet class objects.
+
+GSE117929 contains a methylome-wide analysis of 37 samples of peripheral blood mononuclear cells of systemic sclerosis (N=18) and normal controls (N=19).
+
+```{r load_data}
+
+library(Biobase)
+
+data("GSE117929", package="HOmics")
+
+GSE117929
+
+table(pData(GSE117929)$"diagnosis:ch1")
+
+```
+
+
+List of genes to model obtained from [PMC5988798](https://www.nature.com/articles/s41598-018-26894-4))
+
+
+```{r model}
+
+genes <- c("CCR5","CXCR4")
+
+res.meth <- HOmics.meth(meth.data = GSE117929,
+                   pheno.cond.col = "diagnosis:ch1",
+                   annot.gene.col = "UCSC_RefGene_Name",
+                   annot.z.col = "UCSC_RefGene_Group",
+                   annot.mult.sep = ";",
+                   z.matrix = NULL,
+                   pheno.covar.col = NULL,
+                   gene.list = genes,
+                   cores = 1)
+
+class(res.meth)
+
+```
+
+Object **res** contains a list with each analysis result performed for each genes with all related CpGs. Internally the function searches the annotation field UCSC_RefGene_Name for each gene and gets its gene relative position (3'UTR, TSS1500, TSS200, Body or
+5'UTR) and generates a matrix of prior information.
+
+It is an object of class **HOmics**, which can be subsequently filtered to get significative features.
+
+```{r model_res}
+
+res.meth[[1]]
+
+```
+
+We filter the results of those CpGs in genes with high probability of positive coefficients (betas) and also of negative coefficients in the adjusted bayesian hierarchical model. In this example we filter at a significance level of 0.8 for demo purposes.
+
+
+
+```{r filter_res}
+
+res.f.pos <- get.signif(res.meth, param = "p.pos", threshold = 0.8, as.data.frame = T)
+res.f.pos
+
+res.f.neg <- get.signif(res.meth, param = "p.neg", threshold = 0.8, as.data.frame = T)
+res.f.neg
+
+```
+
+We finally plot 95% probability for the first model.
+
+```{r plot_res}
+
+plot.res(res.meth)
+
+```
+
+Now we adjust the model with sex variable, which is specified in phenoData as 'gender:ch1'
+
+```{r sex model}
+
+genes <- c("CCR5","CXCR4")
+
+res.meth.sex <- HOmics.meth(meth.data = GSE117929,
+                   pheno.cond.col = "diagnosis:ch1",
+                   annot.gene.col = "UCSC_RefGene_Name",
+                   annot.z.col = "UCSC_RefGene_Group",
+                   annot.mult.sep = ";",
+                   z.matrix = NULL,
+                   pheno.covar.col = "gender:ch1",
+                   gene.list = genes,
+                   cores = 1)
+
+class(res.meth.sex)
+
+```
+
+And the filtering 
+
+```{r filter_res_sex}
+
+res.meth.f.sex.pos <- get.signif(res.meth.sex, param = "p.pos", threshold = 0.8, as.data.frame = T)
+res.meth.f.sex.pos
+
+res.meth.f.sex.neg <- get.signif(res.meth.sex, param = "p.neg", threshold = 0.8, as.data.frame = T)
+res.meth.f.sex.neg
+
+```
+
+
+# Session info {.unnumbered}
+
+```{r sessionInfo, echo=FALSE}
+sessionInfo()
+```
