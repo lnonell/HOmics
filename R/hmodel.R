@@ -5,6 +5,10 @@
 #' @param cond response variable, as numerical vector
 #' @param cont flag to consider a continuous response
 #' @param covar.matrix matrix of continuous covariates (in columns)
+#' @param n.adapt number of iterations for the adaptative phase of the hierarchical model. Default = 1000
+#' @param n.chain number of chains of the hierarchical model. Default = 3
+#' @param n.iter number of iteractions for the burn in phase or sampling of the hierarchical model. Default = 2000
+
 
 #' @import rjags
 #' @import MCMCvis
@@ -15,7 +19,8 @@
 
 #' @export hmodel
 
-hmodel <- function(g.matrix, z.matrix, cond, cont, covar.matrix=NULL, seed){
+hmodel <- function(g.matrix, z.matrix, cond, cont, covar.matrix=NULL, seed, 
+                   n.adapt = n.adapt, n.chains = n.chains, n.iter = n.iter) {
   #mirar on posar el model, si es pot posar fora o què
     ### G matrix
     if(is.matrix(g.matrix)) G<- t(g.matrix) else if (is.vector(g.matrix)) G <-as.matrix(g.matrix) else stop("error")
@@ -50,13 +55,13 @@ hmodel <- function(g.matrix, z.matrix, cond, cont, covar.matrix=NULL, seed){
       
     }
     
-    jags.m <- jags.model( file = jags.file, data = dat, n.chains = 3, n.adapt = 1000 ) 
+    jags.m <- jags.model( file = jags.file, data = dat, n.chains = n.chains, n.adapt = n.adapt) 
    
     # burn-in
-    update(jags.m, n.iter = 2000) 
+    update(jags.m, n.iter = n.iter) 
     
     # estimate
-    samps <-coda.samples(jags.m, variable.names = c("beta"), n.iter = 1000, thin = 1) 
+    samps <-coda.samples(jags.m, variable.names = c("beta"), n.iter = n.iter, thin = 1) 
 
     # pvals
     sampmat<-as.matrix(samps)

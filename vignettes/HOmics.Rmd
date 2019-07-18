@@ -54,7 +54,7 @@ HOmics depends on the following R packages:
 2. Fits the likelihood (first level in the hierarchical model) accounting for the prior information (second level of the hierarchical model). `r CRANpkg("rjags")` is used to fit the hierarchical model with the MCMC approach. These are the steps internally taken to fit the model and get the results:
    1. The model is initially fitted with three Markov chains and default initial values
    2. The model then is updated in the *burn in* phase, with 2000 iterations
-   3. Coefficients (beta estimates) for all features are obtained for the posterior distribution by sampling, with 1000 iterations
+   3. Coefficients (beta estimates) for all features are obtained for the posterior distribution by sampling, with 2000 iterations
    4. Function MCMCsummary of package `r CRANpkg("MCMCvis")` is used to obtain summaries
 
 Convergence has been tested in simulated data with these parameters and the three Markov chains were considerably stable.

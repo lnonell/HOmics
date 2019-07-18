@@ -2,7 +2,7 @@
 #'
 #' @param res resultslist
 #' @param param probability to filter with p.pos and p.neg
-#' @param threshold numerical, the threshold to select associated variables related to the specified param. Default is 0.05
+#' @param threshold numerical, the threshold to select associated variables related to the specified param. Default is 0.95
 #' @param as.data.frame collapse as data.frame. Default = TRUE
 
 #' @import purrr
@@ -11,7 +11,7 @@
 
 
 
-get.signif <- function (res, param = "p.pos", threshold = 0.05, as.data.frame = T)
+get.signif <- function (res, param = "p.pos", threshold = 0.95, as.data.frame = T)
 {
   if (class(res)!="HOmics") stop("res must be an HOmics class object")
   

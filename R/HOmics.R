@@ -1,12 +1,15 @@
 #' Integrates two omic data through hierarchical modeling
 #'
 #' @param data.matrix matrix with features as rownames and samples as columns
-#' @param agg.matrix matrix with features as rownames and columns corresponding to the groups, according to some feature aggregation criteria, 0 for non pertenance
 #' @param cond response variable, usually a numerical factor with two levels representing the conditions to compare. If cond is a numerical vector (continuous response), a hiearchical linear regression model will be fit instead of the default hierarchical logistic regression model
 #' @param z.matrix matrix with prior information related to features, with rownames the features and columns the samples
 #' @param covar.matrix vector or matrix of continuous covariates, with samples as rownames (in the same order as cond) and covariates as columns. Default = NULL
+#' @param agg.matrix matrix with features as rownames and columns corresponding to the groups, according to some feature aggregation criteria, 0 for non pertenance
 #' @param seed numerical seed for the use of function set.seed in the generation of the model, for reproducibility
 #' @param cores cores in case of parallelization. Default = 1 (no parallelization)
+#' @param n.adapt number of iterations for the adaptative phase of the hierarchical model. Default = 1000
+#' @param n.chain number of chains of the hierarchical model. Default = 3
+#' @param n.iter number of iteractions for the burn in phase or sampling of the hierarchical model. Default = 2000
 
 #' @import dplyr
 #' @import parallel
@@ -39,7 +42,7 @@ HOmics <- function(data.matrix, agg.matrix, cond, z.matrix, covar.matrix = NULL,
   if (anyNA(data.matrix)) {
     
     data.matrix<- data.matrix[complete.cases(data.matrix),]
-    z.matrix <- z.matrix[rownames(data.matrix)]
+    z.matrix <- z.matrix[rownames(data.matrix),]
     cat("some missing values were detected in data.matrix, only complete features will be selected\n" )
   } 
   
@@ -132,7 +135,10 @@ HOmics <- function(data.matrix, agg.matrix, cond, z.matrix, covar.matrix = NULL,
            cond = cond, 
            cont = cont, 
            covar.matrix = covar.matrix, 
-           seed = seed)  
+           seed = seed,
+           n.adapt = n.adapt,
+           n.chains = n.chains,
+           n.iter = n.iter)  
   }
   stopCluster(cl)
   
