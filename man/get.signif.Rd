@@ -4,14 +4,14 @@
 \alias{get.signif}
 \title{filters results using p-value thresholds}
 \usage{
-get.signif(res, param = "p.pos", threshold = 0.05, as.data.frame = T)
+get.signif(res, param = "p.pos", threshold = 0.95, as.data.frame = T)
 }
 \arguments{
 \item{res}{resultslist}
 
 \item{param}{probability to filter with p.pos and p.neg}
 
-\item{threshold}{numerical, the threshold to select associated variables related to the specified param. Default is 0.05}
+\item{threshold}{numerical, the threshold to select associated variables related to the specified param. Default is 0.95}
 
 \item{as.data.frame}{collapse as data.frame. Default = TRUE}
 }

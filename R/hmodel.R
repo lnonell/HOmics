@@ -19,16 +19,19 @@
 
 #' @export hmodel
 
-hmodel <- function(g.matrix, z.matrix, cond, cont, covar.matrix=NULL, seed, 
+hmodel <- function(G, Z, cond, cont, covar.matrix=NULL, seed, 
                    n.adapt = n.adapt, n.chains = n.chains, n.iter = n.iter) {
   #mirar on posar el model, si es pot posar fora o què
     ### G matrix
-    if(is.matrix(g.matrix)) G<- t(g.matrix) else if (is.vector(g.matrix)) G <-as.matrix(g.matrix) else stop("error")
+    # if(is.matrix(g.matrix)) G<- t(g.matrix) else if (is.vector(g.matrix)) G <-as.matrix(g.matrix) else stop("error")
+    # G <- g.matrix
+   
+    # ### Z matrix
+    # # Z <- z.matrix
+    # if(is.matrix(z.matrix)) Z<- z.matrix else if (is.vector(z.matrix)) Z <-t(as.matrix(z.matrix)) else stop("error") 
+    # Z <- z.matrix
     
-    ### Z matrix
-    Z <- z.matrix
-     
-      ### phenotype (condition)
+    ### outcome (condition)
     y <-cond
 
     N = nrow(G)

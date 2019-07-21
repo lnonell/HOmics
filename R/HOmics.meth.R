@@ -10,6 +10,10 @@
 #' @param gene.list genes to analyze as a vector with symbols (HUGO)
 #' @param seed numerical seed for the use of function set.seed in the generation of the model, for reproducibility
 #' @param cores cores in case of parallelization. Default = 1 (no parallelization)
+#' @param n.adapt number of iterations for the adaptative phase of the hierarchical model. Default = 1000
+#' @param n.chain number of chains of the hierarchical model. Default = 3
+#' @param n.iter number of iteractions for the burn in phase or sampling of the hierarchical model. Default = 2000
+
 
 #' @import dplyr
 #' @import Biobase
@@ -28,6 +32,7 @@
 HOmics.meth <- function(meth.data = GRSet, pheno.cond.col="tissue.ch1", annot.gene.col = "UCSC_RefGene_Name",
                       annot.z.col = c("UCSC_RefGene_Group"), annot.mult.sep = ";", z.matrix = NULL, pheno.covar.col = NULL, 
                       gene.list = genes.u, seed=NULL, cores = 1,
+                      n.adapt = 1000, n.chains = 3, n.iter = 2000, 
                       ...)
 {
   
@@ -95,7 +100,7 @@ HOmics.meth <- function(meth.data = GRSet, pheno.cond.col="tissue.ch1", annot.ge
       
   }
     
-  cond.v <- pheno.data %>% select (!!as.name(pheno.cond.col)) %>% pull()
+  cond.v <- pheno.data %>% dplyr::select (!!as.name(pheno.cond.col)) %>% pull()
   
   if (is.factor(cond.v)) {
     
@@ -107,15 +112,13 @@ HOmics.meth <- function(meth.data = GRSet, pheno.cond.col="tissue.ch1", annot.ge
       cond.min <- levels(cond.v)[1]
       cat(paste0(pheno.cond.col," is a factor, it has been converted to a numerical vector of 0s and 1s with ",cond.min," as the reference level. A hierarchical logistic model will be fitted\n" ))
       cond <- as.numeric(cond.v)-1
-      print(cond)
       
     }
   } else if (is.character(cond.v)) {
     cond.min <- min(cond.v)
     cat(paste0(pheno.cond.col," is a factor, it has been converted to a numerical vector of 0s and 1s with ",cond.min," as the reference level. A hierarchical logistic model will be fitted\n" ))
     cond <- as.numeric(as.factor(cond.v)) -1
-    print(cond)
-    
+   
   } else if (is.numeric(cond.v)) {
     
     cat(paste0(pheno.cond.col," is a numerical vector, a hierarchical linear model will be constructed\n" ))
@@ -133,7 +136,7 @@ HOmics.meth <- function(meth.data = GRSet, pheno.cond.col="tissue.ch1", annot.ge
   if (!is.null(pheno.covar.col)){
     
     if (!(pheno.covar.col %in% colnames(pheno.data))) stop("covariate ", pheno.covar.col, " should be a variable in phenoData slot") 
-    else   covar.v <- pheno.data %>% select (!!as.name(pheno.covar.col)) %>% pull()
+    else   covar.v <- pheno.data %>% dplyr::select (!!as.name(pheno.covar.col)) %>% pull()
     
     if(is.factor(covar.v) | is.character(covar.v)) {
       
@@ -166,7 +169,7 @@ cpg.models<- foreach(i=1:N,.packages=c("rjags","tidyverse","MCMCvis"),.export="h
     if (is.null(z.matrix)){
       annot.gen <- annot.data %>% 
                   filter(grepl(gen,!!as.name(annot.gene.col))) %>% 
-                  select(cpg,!!as.name(annot.gene.col),!!as.name(annot.z.col))
+                  dplyr::select(cpg,!!as.name(annot.gene.col),!!as.name(annot.z.col))
       
       if(nrow(annot.gen)>0){ 
         #number of genes max in a field
@@ -176,53 +179,71 @@ cpg.models<- foreach(i=1:N,.packages=c("rjags","tidyverse","MCMCvis"),.export="h
        #create 2 tibbles, one for genes and one for z vars
        annot.gen.g <- annot.gen %>% 
                       separate(!!as.name(annot.gene.col), paste("Gene",1:nmax,sep="_"),sep=annot.mult.sep) %>% 
-                      select(cpg,Gene_1:paste("Gene",nmax,sep="_")) %>%
+                      dplyr::select(cpg,Gene_1:paste("Gene",nmax,sep="_")) %>%
                       gather("GeneVar","Gene",Gene_1:paste("Gene",nmax,sep="_"))
         
         annot.gen.z <- annot.gen %>% 
                       separate(!!as.name(annot.z.col), paste("GeneGroup",1:nmax,sep="_"),sep=annot.mult.sep) %>%
-                      select(cpg,GeneGroup_1:paste("GeneGroup",nmax,sep="_")) %>%
+                      dplyr::select(cpg,GeneGroup_1:paste("GeneGroup",nmax,sep="_")) %>%
                       gather("GeneGroupVar","GeneGroup",GeneGroup_1:paste("GeneGroup",nmax,sep="_"))
         
         annot.gen <- inner_join(annot.gen.g,annot.gen.z,by=c("cpg"="cpg")) %>%
                       filter(Gene==gen, !is.na(GeneGroup)) %>%
-                      select(cpg,Gene,GeneGroup) %>%
+                      dplyr::select(cpg,Gene,GeneGroup) %>%
                       distinct()
         
         #genegroup to dummies
         if(nrow(annot.gen)>0){
           z.n <- annot.gen   %>% 
-                select(-Gene) %>% 
+                dplyr::select(-Gene) %>% 
                 mutate(var = 1) %>% 
                 spread(GeneGroup, var, fill = 0, sep = "_") 
           
           cpgs <- z.n %>% pull(cpg)
           
-          z.mat<-as.data.frame(select(z.n,-cpg)) 
+          z.mat<-as.data.frame(dplyr::select(z.n,-cpg)) 
           rownames(z.mat) <- cpgs
           g.matrix <- cpg.data[cpgs,] 
-          hmodel(g.matrix = g.matrix, 
-                 z.matrix = z.mat,
+          
+          #matrix restrictions and transformations
+          if (is.matrix(g.matrix)) {
+            g.matrix<- t(g.matrix) 
+          } else if (is.vector(g.matrix)) {
+            g.matrix <-as.matrix(g.matrix)
+            colnames(g.matrix) <- rownames(data.matrix)[i]
+          }
+          
+          ### Z matrix
+          if (is.vector(z.mat)) {
+            z.mat <-t(as.matrix(z.mat))
+            rownames(z.mat) <- rownames(data.matrix)[i]
+          }
+          
+          hmodel(G = g.matrix, 
+                 Z = z.mat,
                  cond = cond, 
                  cont = cont, 
                  covar.matrix = covar.v, 
-                 seed = seed)  
+                 seed = seed,
+                 n.adapt = n.adapt,
+                 n.chains = n.chains,
+                 n.iter = n.iter)  
         }
       }  
     } else {
       annot.gen <- annot.data %>% 
                     filter(grepl(gen,!!as.name(annot.gene.col))) %>% 
-                    select(cpg,!!as.name(annot.gene.col))
+                    dplyr::select(cpg,!!as.name(annot.gene.col))
       if(nrow(annot.gen)>0){ 
         #number of genes max in a field
         nmax <- max(sapply(pull(annot.gen,!!as.name(annot.gene.col)),
                            FUN = function(x) length(unlist(strsplit(x,split=annot.mult.sep)))))
         annot.gen.g <- annot.gen %>% 
                       separate(!!as.name(annot.gene.col), paste("Gene",1:nmax,sep="_"),sep=annot.mult.sep) %>% 
-                      select(cpg,Gene_1:paste("Gene",nmax,sep="_")) %>%
+                      dplyr::select(cpg,Gene_1:paste("Gene",nmax,sep="_")) %>%
                       gather("GeneVar","Gene",Gene_1:paste("Gene",nmax,sep="_")) %>%
                       filter(Gene==gen) %>% 
-                      select(cpg,Gene) %>%
+                      dplyr::select(cpg,Gene) %>%
                       distinct()
         if(nrow(annot.gen.g)>0){
           cpgs <-  annot.gen.g %>% pull(cpg)
@@ -230,7 +251,31 @@ cpg.models<- foreach(i=1:N,.packages=c("rjags","tidyverse","MCMCvis"),.export="h
           if (is.vector(z.mat)) z.mat <-as.matrix(t(z.mat)) 
           rownames(z.mat) <- cpgs
           g.matrix <- cpg.data[cpgs,] 
-          hmodel(g.matrix,z.mat,cond,cont=cont) #function that performs model
+          
+          #matrix restrictions and transformations
+          if (is.matrix(g.matrix)) {
+            g.matrix<- t(g.matrix) 
+          } else if (is.vector(g.matrix)) {
+            g.matrix <-as.matrix(g.matrix)
+            colnames(g.matrix) <- rownames(data.matrix)[i]
+          }
+          
+          ### Z matrix
+          if (is.vector(z.mat)) {
+            z.mat <-t(as.matrix(z.mat))
+            rownames(z.mat) <- rownames(data.matrix)[i]
+          }
+          
+          hmodel(G = g.matrix, 
+                 Z = z.mat,
+                 cond = cond, 
+                 cont = cont, 
+                 covar.matrix = covar.v, 
+                 seed = seed,
+                 n.adapt = n.adapt,
+                 n.chains = n.chains,
+                 n.iter = n.iter)  
+ 
         }  
       }  
     }

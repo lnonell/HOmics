@@ -4,7 +4,7 @@
 #' @param cond response variable, usually a numerical factor with two levels representing the conditions to compare. If cond is a numerical vector (continuous response), a hiearchical linear regression model will be fit instead of the default hierarchical logistic regression model
 #' @param z.matrix matrix with prior information related to features, with rownames the features and columns the samples
 #' @param covar.matrix vector or matrix of continuous covariates, with samples as rownames (in the same order as cond) and covariates as columns. Default = NULL
-#' @param agg.matrix matrix with features as rownames and columns corresponding to the groups, according to some feature aggregation criteria, 0 for non pertenance
+#' @param agg.matrix matrix with features as rownames and columns corresponding to the groups according to some feature aggregation criteria, 0 for non pertenance. If not specified, analysis will be performed by feature, univariate. Default = NULL
 #' @param seed numerical seed for the use of function set.seed in the generation of the model, for reproducibility
 #' @param cores cores in case of parallelization. Default = 1 (no parallelization)
 #' @param n.adapt number of iterations for the adaptative phase of the hierarchical model. Default = 1000
@@ -23,19 +23,27 @@
 #' @export HOmics
 
 
-HOmics <- function(data.matrix, agg.matrix, cond, z.matrix, covar.matrix = NULL, seed=NULL, cores=1, ...)
+HOmics <- function(data.matrix, cond, z.matrix, covar.matrix = NULL, agg.matrix=NULL, seed=NULL, cores=1, 
+                   n.adapt = 1000, n.chains = 3, n.iter = 2000, ...)
 {
   
   call<-match.call() #to be returned at the end
   
   cont = FALSE
+  univ = FALSE
   
-  ############################
-  ###### Data relations ######
-  ############################
+  #################################
+  ###### Object requirements ######
+  #################################
   if (is.null(data.matrix) | !(is.matrix(data.matrix))) stop("data.matrix should be a matrix")
-  if (is.null(agg.matrix) | !(is.matrix(agg.matrix))) stop("agg.matrix should be a matrix")
- 
+  
+  if (is.null(z.matrix) | !(is.matrix(z.matrix))) stop("z.matrix should be a matrix")
+  
+  if (is.null(cond) | !(is.vector(cond) | is.factor(cond)) ) stop("cond should be factor or vector") 
+  else if (any(is.na(cond))) stop("some missing values were detected in cond, please remove them, adjust data.matrix and z.matrix and rerun")
+  
+ # if(!all.equal(rownames(z.matrix),rownames(data.matrix))) stop("rownames in data.matrix and z.matrix should be the same")
+  
   #############################
   ####### Completeness  #######
   #############################
@@ -46,8 +54,15 @@ HOmics <- function(data.matrix, agg.matrix, cond, z.matrix, covar.matrix = NULL,
     cat("some missing values were detected in data.matrix, only complete features will be selected\n" )
   } 
   
+  if (is.null(agg.matrix)) {
+    agg.matrix= diag(nrow=nrow(data.matrix),ncol=nrow(data.matrix))
+    colnames(agg.matrix) <- rownames(data.matrix)
+    cat("univariate analysis will be performed for each feature\n" )
+    univ = TRUE
+  } 
+  
   if (!all(agg.matrix %in% c(0,1))) stop("agg.matrix should be a matrix of 0s and 1s, with 1 indicating association and 0 non association")
-  if (!all(z.matrix %in% c(0,1))) stop("z.matrix should be a matrix of 0s and 1s, with 1 indicating prior information and 0 no prior information")
+  if (!is.numeric(z.matrix)) stop("z.matrix should be a numeric matrix with prior information about features")
   
   #############################
   ##### Matrices matching #####
@@ -67,16 +82,14 @@ HOmics <- function(data.matrix, agg.matrix, cond, z.matrix, covar.matrix = NULL,
     
     } else {
       cond.min <- levels(cond)[1]
-      cat(paste0("cond is a factor, it has been converted to a numerical vector of 0s and 1s with ",cond.min," as the reference level. A hierarchical logistic model will be fitted\n" ))
       cond <- as.numeric(cond)-1
-      print(cond)
-      
+      cat(paste0("cond is a factor, it has been converted to a numerical vector of 0s and 1s with ",cond.min," as the reference level. A hierarchical logistic model will be fitted\n" ))
     }
   } else if (is.character(cond)) {
     cond.min <- min(cond)
     cat(paste0("cond is a factor, it has been converted to a numerical vector of 0s and 1s with ",cond.min," as the reference level. A hierarchical logistic model will be fitted\n" ))
     cond <- as.numeric(as.factor(cond)) -1
-    print(cond)
+
     
   } else if (is.numeric(cond)) {
     
@@ -126,12 +139,28 @@ HOmics <- function(data.matrix, agg.matrix, cond, z.matrix, covar.matrix = NULL,
   
   # depending on cond and covariates a different function should be used 
   g.models<- foreach(i=1:N,.packages=c("rjags","tidyverse","MCMCvis"),.export="hmodel") %dopar% {
-    #select feature belonging to g[i]
+    #select features belonging to g[i]
     gi.f <- colnames(agg.matrix)[as.logical(agg.matrix[i,])]
     g.matrix <- data.matrix[gi.f,] #un lio de terminologia amb la g.matrix que es la data matrix ara, canviar!
     z.mat <- z.matrix[gi.f,]
-    hmodel(g.matrix = g.matrix, 
-           z.matrix = z.mat,
+    
+    #matrix restrictions and transformations
+    if (is.matrix(g.matrix)) {
+      g.matrix<- t(g.matrix) 
+    } else if (is.vector(g.matrix)) {
+      g.matrix <-as.matrix(g.matrix)
+      colnames(g.matrix) <- rownames(data.matrix)[i]
+    }
+    
+    ### Z matrix
+    if (is.vector(z.mat)) {
+      z.mat <-t(as.matrix(z.mat))
+      rownames(z.mat) <- rownames(data.matrix)[i]
+    }
+    
+    #hmodel call
+    hmodel(G = g.matrix, 
+           Z = z.mat,
            cond = cond, 
            cont = cont, 
            covar.matrix = covar.matrix, 
@@ -142,9 +171,14 @@ HOmics <- function(data.matrix, agg.matrix, cond, z.matrix, covar.matrix = NULL,
   }
   stopCluster(cl)
   
-  names(g.models) <- rownames(agg.matrix)
-  
-  results<-g.models
+  if (univ) {
+    g.models <- bind_rows(g.models) 
+    results <-list(g.models)
+    
+  } else {
+    names(g.models) <- rownames(agg.matrix)
+    results<-g.models
+  }  
  # results$call <- call
   class(results)<-"HOmics"
   return(results)  

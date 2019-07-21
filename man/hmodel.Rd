@@ -4,18 +4,25 @@
 \alias{hmodel}
 \title{Performs rjags models}
 \usage{
-hmodel(g.matrix, z.matrix, cond, cont, covar.matrix = NULL, seed)
+hmodel(G, Z, cond, cont, covar.matrix = NULL, seed, n.adapt = n.adapt,
+  n.chains = n.chains, n.iter = n.iter)
 }
 \arguments{
-\item{g.matrix}{matrix of cpgs, with samples in rows and cpgs in columns}
-
-\item{z.matrix}{matrix of functional annotations for g.matrix cpgs, with cpgs in rows and functions in columns}
-
 \item{cond}{response variable, as numerical vector}
 
 \item{cont}{flag to consider a continuous response}
 
 \item{covar.matrix}{matrix of continuous covariates (in columns)}
+
+\item{n.adapt}{number of iterations for the adaptative phase of the hierarchical model. Default = 1000}
+
+\item{n.iter}{number of iteractions for the burn in phase or sampling of the hierarchical model. Default = 2000}
+
+\item{g.matrix}{matrix of cpgs, with samples in rows and cpgs in columns}
+
+\item{z.matrix}{matrix of functional annotations for g.matrix cpgs, with cpgs in rows and functions in columns}
+
+\item{n.chain}{number of chains of the hierarchical model. Default = 3}
 }
 \value{
 results for a gene model

@@ -8,7 +8,8 @@ HOmics.meth(meth.data = GRSet, pheno.cond.col = "tissue.ch1",
   annot.gene.col = "UCSC_RefGene_Name",
   annot.z.col = c("UCSC_RefGene_Group"), annot.mult.sep = ";",
   z.matrix = NULL, pheno.covar.col = NULL, gene.list = genes.u,
-  seed = NULL, cores = 1, ...)
+  seed = NULL, cores = 1, n.adapt = 1000, n.chains = 3,
+  n.iter = 2000, ...)
 }
 \arguments{
 \item{meth.data}{GenomicRatioSet or  ExpressionSet with methylation data}
@@ -30,6 +31,12 @@ HOmics.meth(meth.data = GRSet, pheno.cond.col = "tissue.ch1",
 \item{seed}{numerical seed for the use of function set.seed in the generation of the model, for reproducibility}
 
 \item{cores}{cores in case of parallelization. Default = 1 (no parallelization)}
+
+\item{n.adapt}{number of iterations for the adaptative phase of the hierarchical model. Default = 1000}
+
+\item{n.iter}{number of iteractions for the burn in phase or sampling of the hierarchical model. Default = 2000}
+
+\item{n.chain}{number of chains of the hierarchical model. Default = 3}
 }
 \value{
 an object of class HOmics
